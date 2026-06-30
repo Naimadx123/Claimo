@@ -1,0 +1,11 @@
+title: "<dark_gray>Available codes (<page>/<pages>)"
+rows: 6
+filler: GRAY_STAINED_GLASS_PANE
+voucher-material: PAPER
+voucher-name: "<aqua><voucher>"
+voucher-lore:
+  - "<gray>Click to redeem this code."
+previous-material: ARROW
+previous-name: "<yellow>« Previous page"
+next-material: ARROW
+next-name: "<yellow>Next page »"

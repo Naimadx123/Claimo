@@ -1,0 +1,24 @@
+name: Claimo
+version: '${version}'
+
+main: zone.vao.claimo.Claimo
+api-version: '1.21'
+load: POSTWORLD
+author: vao.zone
+softdepend: [PlaceholderAPI, Vault]
+
+libraries:
+  - "org.jetbrains.kotlin:kotlin-stdlib:${kotlinVersion}"
+  - "com.zaxxer:HikariCP:${hikariVersion}"
+  - "org.xerial:sqlite-jdbc:3.50.1.0"
+  - "com.mysql:mysql-connector-j:9.3.0"
+  - "org.postgresql:postgresql:42.7.7"
+  - "org.mongodb:mongodb-driver-sync:${mongoVersion}"
+
+permissions:
+  claimo.use:
+    description: Allows redeeming voucher codes.
+    default: true
+  claimo.admin:
+    description: Allows reloading the Claimo configuration.
+    default: op

@@ -1,0 +1,6 @@
+# Project exclude paths
+/.gradle/
+/build/
+/build/classes/kotlin/main/
+/api/build/
+/api/build.gradle.kts

@@ -1,0 +1,13 @@
+command: code
+gui-list-enabled: true
+
+storage:
+  type: yaml
+  uri: ""
+  host: localhost
+  port: 3306
+  database: claimo
+  username: root
+  password: ""
+  table-prefix: claimo_
+  pool-size: 10

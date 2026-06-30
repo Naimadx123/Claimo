@@ -1,0 +1,13 @@
+cmd: "lp user %player% parent addtemp vip 7d"
+console: true
+hide: false
+requirements:
+  - type: blocks_mined
+    amount: 100
+    whitelist:
+      - DIAMOND_ORE
+      - DEEPSLATE_DIAMOND_ORE
+  - type: playtime
+    seconds: 3600
+  - type: account_age
+    days: 7
