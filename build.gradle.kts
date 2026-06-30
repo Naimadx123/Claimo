@@ -31,6 +31,7 @@ kotlin {
 
 tasks {
     shadowJar {
+        archiveFileName.set("Claimo-v${project.version}.jar")
         minimize {
             exclude(project(":api"))
         }
