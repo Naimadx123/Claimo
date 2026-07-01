@@ -1,6 +1,6 @@
 # Claimo
 
-Voucher / code redemption plugin for **PaperMC 26.2**. Players redeem codes with a
+Voucher / code redemption plugin for **PaperMC 1.21.1 - 26.2**. Players redeem codes with a
 configurable command; each code runs one or more server commands and can gate
 redemption behind **requirements** (blocks mined, playtime, …). The requirement
 system is a public API so addons can plug in new checks — e.g. "follows us on
@@ -12,7 +12,7 @@ TikTok / YouTube / X / Instagram".
 ./gradlew build
 ```
 
-The shaded plugin jar is written to `build/libs/Claimo-<version>-all.jar`.
+The shaded plugin jar is written to `build/libs/Claimo-v<version>.jar`.
 
 ## Commands & permissions
 
