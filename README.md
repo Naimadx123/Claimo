@@ -8,9 +8,9 @@ TikTok / YouTube / X / Instagram".
 
 ## Download
 
-https://modrinth.com/plugin/claimo
-https://builtbybit.com/resources/claimo.115049/
-https://voxel.shop/product/9982/claimo
+- https://modrinth.com/plugin/claimo
+- https://builtbybit.com/resources/claimo.115049/
+- https://voxel.shop/product/9982/claimo
 
 ## Building
 
