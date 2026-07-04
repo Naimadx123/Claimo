@@ -81,4 +81,19 @@ object VoucherCommand {
                     }
             )
             .build()
+
+    fun buildDialogInput(plugin: Claimo, commandName: String): LiteralCommandNode<CommandSourceStack> =
+        Commands.literal(commandName)
+            .executes { ctx ->
+                val sender = ctx.source.sender
+                val messages = plugin.configManager.config.messages
+                when {
+                    !sender.hasPermission("claimo.use") -> messages.send(sender, "no-permission")
+                    sender !is Player -> messages.send(sender, "players-only")
+                    plugin.codePrompt == null -> messages.send(sender, "dialog-unavailable")
+                    else -> plugin.codePrompt?.open(sender)
+                }
+                Command.SINGLE_SUCCESS
+            }
+            .build()
 }

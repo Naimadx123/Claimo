@@ -9,6 +9,7 @@ import zone.vao.claimo.command.VoucherCommand
 import zone.vao.claimo.config.ConfigManager
 import zone.vao.claimo.creator.VoucherCreator
 import zone.vao.claimo.gui.VoucherMenu
+import zone.vao.claimo.prompt.CodePrompt
 import zone.vao.claimo.requirement.RequirementInput
 import zone.vao.claimo.requirement.RequirementRegistry
 import zone.vao.claimo.requirement.builtin.AccountAgeRequirement
@@ -44,6 +45,8 @@ class Claimo : JavaPlugin(), ClaimoService {
         private set
     var voucherCreator: VoucherCreator? = null
         private set
+    var codePrompt: CodePrompt? = null
+        private set
 
     override fun onEnable() {
         requirementRegistry = RequirementRegistry(logger)
@@ -69,6 +72,9 @@ class Claimo : JavaPlugin(), ClaimoService {
 
         voucherCreator = createDialogCreatorIfSupported()
         (voucherCreator as? Listener)?.let { server.pluginManager.registerEvents(it, this) }
+
+        codePrompt = createCodePromptIfSupported()
+        (codePrompt as? Listener)?.let { server.pluginManager.registerEvents(it, this) }
 
         ClaimoApi.init(this)
 
@@ -199,14 +205,36 @@ class Claimo : JavaPlugin(), ClaimoService {
         }.getOrNull()
     }
 
+    private fun createCodePromptIfSupported(): CodePrompt? {
+        val supported = runCatching { Class.forName("io.papermc.paper.dialog.Dialog") }.isSuccess
+        if (!supported) {
+            logger.info("Dialog API not available (server < 1.21.7); the code input dialog is disabled.")
+            return null
+        }
+        return runCatching {
+            Class.forName("zone.vao.claimo.prompt.DialogCodePrompt")
+                .getConstructor(Claimo::class.java)
+                .newInstance(this) as CodePrompt
+        }.onFailure {
+            logger.warning("Failed to initialise the code input dialog: ${it.message}")
+        }.getOrNull()
+    }
+
     private fun registerCommand() {
         val commandName = configManager.config.commandName
+        val dialogCommandName = configManager.config.dialogCommandName
         lifecycleManager.registerEventHandler(LifecycleEvents.COMMANDS) { event ->
             event.registrar().register(
                 VoucherCommand.build(this, commandName),
                 "Redeem Claimo voucher codes",
                 listOf("claimo"),
             )
+            if (dialogCommandName != null) {
+                event.registrar().register(
+                    VoucherCommand.buildDialogInput(this, dialogCommandName),
+                    "Redeem a Claimo voucher code via a dialog",
+                )
+            }
         }
     }
 }
