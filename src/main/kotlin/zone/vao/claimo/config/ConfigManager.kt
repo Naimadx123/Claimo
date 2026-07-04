@@ -28,10 +28,15 @@ class ConfigManager(private val plugin: JavaPlugin) {
             .removePrefix("/")
             .trim()
             .ifEmpty { "code" }
+        val dialogCommandName = main.getString("dialog_code_input")
+            ?.removePrefix("/")
+            ?.trim()
+            ?.ifEmpty { null }
         val guiListEnabled = main.getBoolean("gui-list-enabled", true)
 
         config = ClaimoConfig(
             commandName = commandName,
+            dialogCommandName = dialogCommandName,
             guiListEnabled = guiListEnabled,
             storage = parseStorage(main.getConfigurationSection("storage")),
             messages = parseMessages(messages),
