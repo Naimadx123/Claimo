@@ -8,6 +8,8 @@ data class ClaimoConfig(
     val dialogCommandName: String?,
     val guiListEnabled: Boolean,
     val storage: StorageConfig,
+    val redeemSound: SoundConfig,
+    val logRedeems: Boolean,
     val messages: Messages,
     val gui: GuiConfig,
     val vouchers: Map<String, Voucher>,

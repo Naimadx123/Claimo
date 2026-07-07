@@ -1,5 +1,7 @@
 package zone.vao.claimo.config
 
+import net.kyori.adventure.key.Key
+import net.kyori.adventure.sound.Sound
 import org.bukkit.Material
 import org.bukkit.configuration.ConfigurationSection
 import org.bukkit.configuration.file.YamlConfiguration
@@ -40,10 +42,27 @@ class ConfigManager(private val plugin: JavaPlugin) {
             dialogCommandName = dialogCommandName,
             guiListEnabled = guiListEnabled,
             storage = parseStorage(main.getConfigurationSection("storage")),
+            redeemSound = parseSound(main.getConfigurationSection("redeem-sound")),
+            logRedeems = main.getBoolean("logging.redeems", true),
             messages = parseMessages(messages),
             gui = parseGui(gui),
             vouchers = loadVouchers(),
         )
+    }
+
+    private fun parseSound(section: ConfigurationSection?): SoundConfig {
+        if (section == null || !section.getBoolean("enabled", true)) return SoundConfig(null)
+        val rawKey = section.getString("key")?.trim().orEmpty()
+        if (rawKey.isEmpty()) return SoundConfig(null)
+        val key = runCatching { Key.key(rawKey) }.getOrElse {
+            plugin.logger.warning("Invalid redeem-sound key '$rawKey'; disabling the redeem sound.")
+            return SoundConfig(null)
+        }
+        val source = runCatching { Sound.Source.valueOf(section.getString("source", "MASTER")!!.uppercase()) }
+            .getOrDefault(Sound.Source.MASTER)
+        val volume = section.getDouble("volume", 1.0).toFloat()
+        val pitch = section.getDouble("pitch", 1.0).toFloat()
+        return SoundConfig(Sound.sound(key, source, volume, pitch))
     }
 
     private fun parseStorage(section: ConfigurationSection?): StorageConfig = StorageConfig(
@@ -106,6 +125,15 @@ class ConfigManager(private val plugin: JavaPlugin) {
         build(yaml)
         yaml.save(File(dir, "$safeId.yml"))
     }
+
+    fun readVoucher(safeId: String): YamlConfiguration? {
+        val file = File(File(plugin.dataFolder, VOUCHERS_DIR), "$safeId.yml")
+        if (!file.isFile) return null
+        return YamlConfiguration.loadConfiguration(file)
+    }
+
+    fun deleteVoucher(safeId: String): Boolean =
+        File(File(plugin.dataFolder, VOUCHERS_DIR), "$safeId.yml").delete()
 
     private fun loadVouchers(): Map<String, Voucher> {
         val dir = File(plugin.dataFolder, VOUCHERS_DIR)

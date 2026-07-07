@@ -73,6 +73,7 @@ class VoucherService(private val plugin: Claimo) {
 
                 execute(player, voucher)
                 plugin.usageService.record(player, voucher)
+                config.redeemSound.sound?.let(player::playSound)
                 VoucherRedeemedEvent(player, voucher).callEvent()
                 messages.send(player, "success", Placeholder.parsed("voucher", voucherId))
             }
