@@ -60,7 +60,7 @@ object VoucherCommand {
                         if (ctx.source.sender.hasPermission("claimo.use")) {
                             val input = builder.remaining.lowercase()
                             plugin.configManager.config.vouchers.values
-                                .filter { !it.hidden && it.id.lowercase().startsWith(input) }
+                                .filter { !it.hidden && !it.isExpired() && it.id.lowercase().startsWith(input) }
                                 .forEach { builder.suggest(it.id) }
                         }
                         builder.buildFuture()

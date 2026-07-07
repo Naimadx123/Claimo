@@ -19,6 +19,7 @@ import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 import zone.vao.claimo.Claimo
 import zone.vao.claimo.requirement.RequirementInput
+import zone.vao.claimo.util.Durations
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
@@ -32,6 +33,7 @@ class DialogVoucherCreator(private val plugin: Claimo) : VoucherCreator, Listene
         var command = ""
         var console = true
         var hide = false
+        var expires = ""
         var uses = 0
         var perPlayer = false
         val requirements = LinkedHashMap<String, MutableMap<String, Any>>()
@@ -81,6 +83,7 @@ class DialogVoucherCreator(private val plugin: Claimo) : VoucherCreator, Listene
             draft.command = view.getText("command").orEmpty().trim()
             draft.console = view.getBoolean("console") ?: true
             draft.hide = view.getBoolean("hide") ?: false
+            draft.expires = view.getText("expires").orEmpty().trim()
             draft.uses = view.getFloat("uses")?.toInt() ?: 0
             draft.perPlayer = view.getBoolean("per_player") ?: false
             return
@@ -124,12 +127,21 @@ class DialogVoucherCreator(private val plugin: Claimo) : VoucherCreator, Listene
             reopen(player, draft, 0)
             return
         }
+        if (draft.expires.isNotBlank() && Durations.parseMillis(draft.expires) == null) {
+            messages.send(player, "creator-invalid-expiry")
+            reopen(player, draft, 0)
+            return
+        }
 
         try {
             plugin.configManager.saveVoucher(safeId) { yaml ->
                 yaml.set("cmd", draft.command)
                 yaml.set("console", draft.console)
                 yaml.set("hide", draft.hide)
+                if (draft.expires.isNotBlank()) {
+                    yaml.set("expires", draft.expires)
+                    yaml.set("created", System.currentTimeMillis())
+                }
                 if (draft.uses > 0) {
                     yaml.set("limit.mode", if (draft.perPlayer) "per-player" else "global")
                     yaml.set("limit.amount", draft.uses)
@@ -164,6 +176,8 @@ class DialogVoucherCreator(private val plugin: Claimo) : VoucherCreator, Listene
                 .maxLength(256).width(300).initial(draft.command).build(),
             DialogInput.bool("console", Component.text("Run as console")).initial(draft.console).build(),
             DialogInput.bool("hide", Component.text("Hide from list")).initial(draft.hide).build(),
+            DialogInput.text("expires", Component.text("Expires after (e.g. 5d, empty = never)"))
+                .maxLength(32).width(300).initial(draft.expires).build(),
             DialogInput.numberRange("uses", Component.text("Max uses (0 = unlimited)"), 0f, 1000f)
                 .step(1f).initial(draft.uses.toFloat()).width(300).build(),
             DialogInput.bool("per_player", Component.text("Limit is per player (off = shared)"))

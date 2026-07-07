@@ -129,8 +129,9 @@ requirement's own `<description>`.
 ### `gui.yml`
 
 Title placeholders: `<page>`, `<pages>`. `voucher-name`/`voucher-lore`
-placeholder: `<voucher>`. Set `filler: NONE` for no background. `rows` is
-clamped to 2–6 (the bottom row holds the page navigation).
+placeholders: `<voucher>` and `<expires>` (human-friendly remaining time, or
+`never`). Set `filler: NONE` for no background. `rows` is clamped to 2–6 (the
+bottom row holds the page navigation).
 
 ```yaml
 title: "<dark_gray>Available codes (<page>/<pages>)"
@@ -162,6 +163,11 @@ cmd: "lp user %player% parent addtemp vip 7d"
 console: true
 # Hide from the GUI and tab-completion (still redeemable by code). Default: false.
 hide: false
+# Optional expiry as a human-friendly duration: s (seconds), m (minutes),
+# h (hours), d (days), w (weeks) — e.g. 500s, 10m, 5d, 10w, or combined 1d12h.
+# Counted from `created` if present (epoch millis, written by the in-game creator),
+# otherwise from the file's last-modified time. Omit for a code that never expires.
+expires: 30d
 # Optional redemption limit. Omit for unlimited.
 #   mode: global      -> shared pool of `amount` one-time redemptions: the first
 #                        `amount` distinct players each redeem once, then it's gone

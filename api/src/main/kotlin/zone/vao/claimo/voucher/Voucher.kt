@@ -10,4 +10,8 @@ data class Voucher(
     val limitMode: LimitMode,
     val limitAmount: Int,
     val requirements: List<RequirementConfig>,
-)
+    val expiresAt: Long? = null,
+) {
+    fun isExpired(now: Long = System.currentTimeMillis()): Boolean =
+        expiresAt != null && now >= expiresAt
+}

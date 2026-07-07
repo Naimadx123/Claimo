@@ -7,6 +7,7 @@ import org.bukkit.plugin.java.JavaPlugin
 import zone.vao.claimo.requirement.RequirementConfig
 import zone.vao.claimo.storage.StorageConfig
 import zone.vao.claimo.storage.StorageType
+import zone.vao.claimo.util.Durations
 import zone.vao.claimo.voucher.LimitMode
 import zone.vao.claimo.voucher.Voucher
 import java.io.File
@@ -116,7 +117,7 @@ class ConfigManager(private val plugin: JavaPlugin) {
             for (voucherFile in files) {
                 val id = voucherFile.nameWithoutExtension
                 val yaml = YamlConfiguration.loadConfiguration(voucherFile)
-                put(id, parseVoucher(id, yaml))
+                put(id, parseVoucher(id, yaml, voucherFile.lastModified()))
             }
         }
     }
@@ -163,7 +164,7 @@ class ConfigManager(private val plugin: JavaPlugin) {
         return Messages(prefix, raw)
     }
 
-    private fun parseVoucher(id: String, section: ConfigurationSection): Voucher {
+    private fun parseVoucher(id: String, section: ConfigurationSection, defaultCreatedAt: Long): Voucher {
         val limit = section.getConfigurationSection("limit")
         return Voucher(
             id = id,
@@ -173,7 +174,20 @@ class ConfigManager(private val plugin: JavaPlugin) {
             limitMode = parseLimitMode(limit?.getString("mode")),
             limitAmount = (limit?.getInt("amount", 1) ?: 1).coerceAtLeast(1),
             requirements = parseRequirements(id, section.getMapList("requirements")),
+            expiresAt = parseExpiry(id, section, defaultCreatedAt),
         )
+    }
+
+    private fun parseExpiry(id: String, section: ConfigurationSection, defaultCreatedAt: Long): Long? {
+        val raw = section.getString("expires")?.trim().orEmpty()
+        if (raw.isEmpty()) return null
+        val duration = Durations.parseMillis(raw)
+        if (duration == null) {
+            plugin.logger.warning("Voucher '$id' has an invalid 'expires' value '$raw'; ignoring it.")
+            return null
+        }
+        val createdAt = if (section.contains("created")) section.getLong("created") else defaultCreatedAt
+        return createdAt + duration
     }
 
     private fun parseLimitMode(value: String?): LimitMode = when (value?.lowercase()?.replace('-', '_')) {

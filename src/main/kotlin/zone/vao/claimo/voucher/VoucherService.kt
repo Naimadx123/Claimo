@@ -22,6 +22,11 @@ class VoucherService(private val plugin: Claimo) {
             return
         }
 
+        if (voucher.isExpired()) {
+            messages.send(player, "code-expired", Placeholder.parsed("voucher", voucherId))
+            return
+        }
+
         if (plugin.usageService.isExhausted(player, voucher)) {
             sendLimitMessage(player, voucher)
             return
