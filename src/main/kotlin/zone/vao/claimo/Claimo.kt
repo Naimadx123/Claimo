@@ -9,11 +9,13 @@ import zone.vao.claimo.command.VoucherCommand
 import zone.vao.claimo.config.ConfigManager
 import zone.vao.claimo.creator.VoucherCreator
 import zone.vao.claimo.gui.VoucherMenu
+import zone.vao.claimo.log.RedeemLog
 import zone.vao.claimo.prompt.CodePrompt
 import zone.vao.claimo.requirement.RequirementInput
 import zone.vao.claimo.requirement.RequirementRegistry
 import zone.vao.claimo.requirement.builtin.AccountAgeRequirement
 import zone.vao.claimo.requirement.builtin.BlocksMinedRequirement
+import zone.vao.claimo.requirement.builtin.CustomRequirement
 import zone.vao.claimo.requirement.builtin.MessagesSentRequirement
 import zone.vao.claimo.requirement.builtin.PermissionRequirement
 import zone.vao.claimo.requirement.builtin.PlaytimeRequirement
@@ -47,6 +49,7 @@ class Claimo : JavaPlugin(), ClaimoService {
         private set
     var codePrompt: CodePrompt? = null
         private set
+    private lateinit var redeemLog: RedeemLog
 
     override fun onEnable() {
         requirementRegistry = RequirementRegistry(logger)
@@ -76,6 +79,11 @@ class Claimo : JavaPlugin(), ClaimoService {
         codePrompt = createCodePromptIfSupported()
         (codePrompt as? Listener)?.let { server.pluginManager.registerEvents(it, this) }
 
+        redeemLog = RedeemLog(this)
+        server.pluginManager.registerEvents(redeemLog, this)
+
+        registerPlaceholders()
+
         ClaimoApi.init(this)
 
         registerCommand()
@@ -102,8 +110,19 @@ class Claimo : JavaPlugin(), ClaimoService {
     override fun redeem(player: Player, voucherId: String) = voucherService.redeem(player, voucherId)
 
     override fun onDisable() {
+        if (::redeemLog.isInitialized) redeemLog.shutdown()
         if (::usageService.isInitialized) usageService.shutdown()
         ClaimoApi.shutdown()
+    }
+
+    private fun registerPlaceholders() {
+        if (!server.pluginManager.isPluginEnabled("PlaceholderAPI")) return
+        runCatching {
+            val expansion = Class.forName("zone.vao.claimo.hook.ClaimoExpansion")
+                .getConstructor(Claimo::class.java)
+                .newInstance(this)
+            expansion.javaClass.getMethod("register").invoke(expansion)
+        }.onFailure { logger.warning("Failed to register the PlaceholderAPI expansion: ${it.message}") }
     }
 
     private fun registerBuiltinRequirements() {
@@ -172,6 +191,22 @@ class Claimo : JavaPlugin(), ClaimoService {
             listOf(
                 RequirementInput.TextInput("ranks", "Required ranks (comma-separated)"),
                 RequirementInput.TextInput("denied-ranks", "Forbidden ranks (comma-separated)"),
+            ),
+        )
+        requirementRegistry.register(
+            "custom",
+            { cfg ->
+                CustomRequirement(
+                    configManager.config.messages,
+                    cfg.getString("placeholder", "").orEmpty(),
+                    cfg.getString("operator", "==").orEmpty(),
+                    cfg.getString("value", "").orEmpty(),
+                )
+            },
+            listOf(
+                RequirementInput.TextInput("placeholder", "Placeholder (e.g. %vault_eco_balance%)"),
+                RequirementInput.TextInput("operator", "Operator (>=, <=, ==, !=, contains, regex)", initial = ">="),
+                RequirementInput.TextInput("value", "Value to compare against"),
             ),
         )
     }
