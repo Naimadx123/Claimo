@@ -263,8 +263,7 @@ key (used in `config.yml`) bound to a factory that builds a `Requirement`.
 
 ### 1. Depend on Claimo
 
-Compile against the published API artifact (it ships only the API classes; the
-Claimo plugin provides the implementation at runtime):
+Compile against the published API artifact:
 
 ```kotlin
 repositories {
