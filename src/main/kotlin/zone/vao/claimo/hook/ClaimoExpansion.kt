@@ -10,7 +10,7 @@ class ClaimoExpansion(private val plugin: Claimo) : PlaceholderExpansion() {
 
     override fun getIdentifier(): String = "claimo"
 
-    override fun getAuthor(): String = plugin.pluginMeta.authors.firstOrNull() ?: "vao.zone"
+    override fun getAuthor(): String = plugin.pluginMeta.authors.firstOrNull() ?: "Naimad (dc: 4g0)"
 
     override fun getVersion(): String = plugin.pluginMeta.version
 
