@@ -36,18 +36,67 @@ class DialogVoucherCreator(private val plugin: Claimo) : VoucherCreator, Listene
         var expires = ""
         var uses = 0
         var perPlayer = false
+        var editing = false
+        var originalId = ""
         val requirements = LinkedHashMap<String, MutableMap<String, Any>>()
         var page = 0
     }
 
     private val sessions = ConcurrentHashMap<UUID, Draft>()
+    private val pendingDelete = ConcurrentHashMap<UUID, String>()
 
     override fun open(player: Player) {
-        val specs = plugin.requirementRegistry.types().sorted()
-            .map { TypeSpec(it, plugin.requirementRegistry.inputs(it)) }
-        val draft = Draft(specs.chunked(REQUIREMENTS_PER_PAGE))
+        val draft = newDraft()
         sessions[player.uniqueId] = draft
         player.showDialog(buildPage(draft))
+    }
+
+    override fun edit(player: Player, voucherId: String) {
+        val messages = plugin.configManager.config.messages
+        val safeId = plugin.configManager.sanitizeId(voucherId)
+        val yaml = safeId?.let { plugin.configManager.readVoucher(it) }
+        if (safeId == null || yaml == null) {
+            messages.send(player, "creator-not-found", Placeholder.parsed("voucher", voucherId))
+            return
+        }
+        val draft = newDraft().apply {
+            editing = true
+            originalId = safeId
+            id = safeId
+            command = when (val cmd = yaml.get("cmd")) {
+                is String -> cmd
+                is List<*> -> cmd.firstOrNull()?.toString().orEmpty()
+                else -> ""
+            }
+            console = yaml.getBoolean("console", true)
+            hide = yaml.getBoolean("hide", false)
+            expires = yaml.getString("expires").orEmpty().trim()
+            val mode = yaml.getString("limit.mode")?.lowercase()?.replace('-', '_')
+            if (mode == "global" || mode == "per_player") {
+                uses = yaml.getInt("limit.amount", 1)
+                perPlayer = mode == "per_player"
+            }
+            for (entry in yaml.getMapList("requirements")) {
+                val map = entry.entries.associate { (k, v) -> k.toString() to v }
+                val type = map["type"]?.toString()?.lowercase() ?: continue
+                requirements[type] = LinkedHashMap<String, Any>().apply {
+                    map.forEach { (k, v) -> if (k != "type" && v != null) put(k, v) }
+                }
+            }
+        }
+        sessions[player.uniqueId] = draft
+        player.showDialog(buildPage(draft))
+    }
+
+    override fun delete(player: Player, voucherId: String) {
+        val messages = plugin.configManager.config.messages
+        val safeId = plugin.configManager.sanitizeId(voucherId)
+        if (safeId == null || !plugin.configManager.voucherExists(safeId)) {
+            messages.send(player, "creator-not-found", Placeholder.parsed("voucher", voucherId))
+            return
+        }
+        pendingDelete[player.uniqueId] = safeId
+        player.showDialog(buildDeleteConfirm(safeId))
     }
 
     @EventHandler
@@ -57,19 +106,31 @@ class DialogVoucherCreator(private val plugin: Claimo) : VoucherCreator, Listene
         val connection = event.commonConnection
         if (connection !is PlayerGameConnection) return
         val player = connection.player
-        val draft = sessions[player.uniqueId] ?: return
 
         if (key == CANCEL) {
             sessions.remove(player.uniqueId)
+            pendingDelete.remove(player.uniqueId)
+            return
+        }
+        if (key == DELETE_OK) {
+            val id = pendingDelete.remove(player.uniqueId) ?: return
+            plugin.server.globalRegionScheduler.run(plugin) { _ -> finishDelete(player, id) }
             return
         }
 
+        val draft = sessions[player.uniqueId] ?: return
         event.dialogResponseView?.let { readPage(draft, it) }
         when (key) {
             NEXT -> reopen(player, draft, draft.page + 1)
             BACK -> reopen(player, draft, draft.page - 1)
             CREATE -> plugin.server.globalRegionScheduler.run(plugin) { _ -> finalize(player, draft) }
         }
+    }
+
+    private fun newDraft(): Draft {
+        val specs = plugin.requirementRegistry.types().sorted()
+            .map { TypeSpec(it, plugin.requirementRegistry.inputs(it)) }
+        return Draft(specs.chunked(REQUIREMENTS_PER_PAGE))
     }
 
     private fun reopen(player: Player, draft: Draft, page: Int) {
@@ -93,7 +154,7 @@ class DialogVoucherCreator(private val plugin: Claimo) : VoucherCreator, Listene
                 draft.requirements.remove(spec.type)
                 continue
             }
-            val params = LinkedHashMap<String, Any>()
+            val params = LinkedHashMap<String, Any>(draft.requirements[spec.type] ?: emptyMap())
             for (input in spec.inputs) {
                 val dk = inputKey(spec.type, input.key)
                 when (input) {
@@ -103,7 +164,7 @@ class DialogVoucherCreator(private val plugin: Claimo) : VoucherCreator, Listene
                     }
                     is RequirementInput.TextInput -> {
                         val text = view.getText(dk).orEmpty()
-                        if (text.isNotBlank()) params[input.key] = text
+                        if (text.isNotBlank()) params[input.key] = text else params.remove(input.key)
                     }
                     is RequirementInput.BoolInput -> {
                         params[input.key] = view.getBoolean(dk) ?: input.initial
@@ -116,13 +177,13 @@ class DialogVoucherCreator(private val plugin: Claimo) : VoucherCreator, Listene
 
     private fun finalize(player: Player, draft: Draft) {
         val messages = plugin.configManager.config.messages
-        val safeId = plugin.configManager.sanitizeId(draft.id)
+        val safeId = if (draft.editing) draft.originalId else plugin.configManager.sanitizeId(draft.id)
         if (safeId == null || draft.command.isBlank()) {
             messages.send(player, "creator-invalid-id")
             reopen(player, draft, 0)
             return
         }
-        if (plugin.configManager.voucherExists(safeId)) {
+        if (!draft.editing && plugin.configManager.voucherExists(safeId)) {
             messages.send(player, "creator-exists", Placeholder.parsed("voucher", safeId))
             reopen(player, draft, 0)
             return
@@ -162,8 +223,19 @@ class DialogVoucherCreator(private val plugin: Claimo) : VoucherCreator, Listene
         }
 
         plugin.reload()
-        messages.send(player, "creator-created", Placeholder.parsed("voucher", safeId))
+        val key = if (draft.editing) "creator-edited" else "creator-created"
+        messages.send(player, key, Placeholder.parsed("voucher", safeId))
         sessions.remove(player.uniqueId)
+    }
+
+    private fun finishDelete(player: Player, safeId: String) {
+        val messages = plugin.configManager.config.messages
+        if (plugin.configManager.deleteVoucher(safeId)) {
+            plugin.reload()
+            messages.send(player, "creator-deleted", Placeholder.parsed("voucher", safeId))
+        } else {
+            messages.send(player, "creator-not-found", Placeholder.parsed("voucher", safeId))
+        }
     }
 
     private fun buildPage(draft: Draft): Dialog =
@@ -184,16 +256,12 @@ class DialogVoucherCreator(private val plugin: Claimo) : VoucherCreator, Listene
                 .initial(draft.perPlayer).build(),
         )
         val advance = if (draft.reqPages.isEmpty()) {
-            button("Create", NamedTextColor.GREEN, CREATE)
+            button("Save", NamedTextColor.GREEN, CREATE)
         } else {
             button("Next »", NamedTextColor.YELLOW, NEXT)
         }
-        return dialog(
-            "Create a code — settings",
-            "Fill in the code, then continue to its requirements.",
-            inputs,
-            listOf(advance),
-        )
+        val title = if (draft.editing) "Edit ${draft.originalId} — settings" else "Create a code — settings"
+        return dialog(title, "Fill in the code, then continue to its requirements.", inputs, listOf(advance))
     }
 
     private fun buildRequirementPage(draft: Draft, index: Int): Dialog {
@@ -202,7 +270,7 @@ class DialogVoucherCreator(private val plugin: Claimo) : VoucherCreator, Listene
         val last = index == draft.reqPages.lastIndex
         val actions = listOf(
             button("« Back", NamedTextColor.GRAY, BACK),
-            if (last) button("Create", NamedTextColor.GREEN, CREATE) else button("Next »", NamedTextColor.YELLOW, NEXT),
+            if (last) button("Save", NamedTextColor.GREEN, CREATE) else button("Next »", NamedTextColor.YELLOW, NEXT),
         )
         return dialog(
             "Requirements (${index + 1}/${draft.reqPages.size})",
@@ -240,6 +308,22 @@ class DialogVoucherCreator(private val plugin: Claimo) : VoucherCreator, Listene
         return controls
     }
 
+    private fun buildDeleteConfirm(safeId: String): Dialog =
+        Dialog.create { factory ->
+            factory.empty()
+                .base(
+                    DialogBase.builder(Component.text("Delete code"))
+                        .body(listOf(DialogBody.plainMessage(Component.text("Permanently delete the code \"$safeId\"?"))))
+                        .build(),
+                )
+                .type(
+                    DialogType.confirmation(
+                        button("Delete", NamedTextColor.RED, DELETE_OK),
+                        button("Cancel", NamedTextColor.GRAY, CANCEL),
+                    ),
+                )
+        }
+
     private fun dialog(title: String, body: String, inputs: List<DialogInput>, actions: List<ActionButton>): Dialog =
         Dialog.create { factory ->
             factory.empty()
@@ -267,5 +351,6 @@ class DialogVoucherCreator(private val plugin: Claimo) : VoucherCreator, Listene
         val BACK: Key = Key.key(NAMESPACE, "create_back")
         val CREATE: Key = Key.key(NAMESPACE, "create_finish")
         val CANCEL: Key = Key.key(NAMESPACE, "create_cancel")
+        val DELETE_OK: Key = Key.key(NAMESPACE, "delete_confirm")
     }
 }

@@ -8,6 +8,7 @@ import io.papermc.paper.command.brigadier.Commands
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder
 import org.bukkit.entity.Player
 import zone.vao.claimo.Claimo
+import zone.vao.claimo.creator.VoucherCreator
 
 @Suppress("UnstableApiUsage")
 object VoucherCommand {
@@ -54,6 +55,8 @@ object VoucherCommand {
                         Command.SINGLE_SUCCESS
                     }
             )
+            .then(voucherAdminCommand(plugin, "edit") { creator, player, id -> creator.edit(player, id) })
+            .then(voucherAdminCommand(plugin, "delete") { creator, player, id -> creator.delete(player, id) })
             .then(
                 Commands.argument("voucher", StringArgumentType.word())
                     .suggests { ctx, builder ->
@@ -77,6 +80,36 @@ object VoucherCommand {
                         }
                         val voucherId = StringArgumentType.getString(ctx, "voucher")
                         plugin.voucherService.redeem(sender, voucherId)
+                        Command.SINGLE_SUCCESS
+                    }
+            )
+            .build()
+
+    private fun voucherAdminCommand(
+        plugin: Claimo,
+        literal: String,
+        action: (VoucherCreator, Player, String) -> Unit,
+    ): LiteralCommandNode<CommandSourceStack> =
+        Commands.literal(literal)
+            .requires { it.sender.hasPermission("claimo.admin") }
+            .then(
+                Commands.argument("voucher", StringArgumentType.word())
+                    .suggests { _, builder ->
+                        val input = builder.remaining.lowercase()
+                        plugin.configManager.config.vouchers.keys
+                            .filter { it.lowercase().startsWith(input) }
+                            .forEach(builder::suggest)
+                        builder.buildFuture()
+                    }
+                    .executes { ctx ->
+                        val sender = ctx.source.sender
+                        val messages = plugin.configManager.config.messages
+                        val id = StringArgumentType.getString(ctx, "voucher")
+                        when {
+                            sender !is Player -> messages.send(sender, "players-only")
+                            plugin.voucherCreator == null -> messages.send(sender, "creator-unavailable")
+                            else -> plugin.voucherCreator?.let { action(it, sender, id) }
+                        }
                         Command.SINGLE_SUCCESS
                     }
             )
