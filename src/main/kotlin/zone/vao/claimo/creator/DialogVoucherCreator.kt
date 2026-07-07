@@ -251,7 +251,7 @@ class DialogVoucherCreator(private val plugin: Claimo) : VoucherCreator, Listene
             DialogInput.text("expires", Component.text("Expires after (e.g. 5d, empty = never)"))
                 .maxLength(32).width(300).initial(draft.expires).build(),
             DialogInput.numberRange("uses", Component.text("Max uses (0 = unlimited)"), 0f, 1000f)
-                .step(1f).initial(draft.uses.toFloat()).width(300).build(),
+                .step(1f).initial(draft.uses.toFloat().coerceIn(0f, 1000f)).width(300).build(),
             DialogInput.bool("per_player", Component.text("Limit is per player (off = shared)"))
                 .initial(draft.perPlayer).build(),
         )
@@ -290,8 +290,11 @@ class DialogVoucherCreator(private val plugin: Claimo) : VoucherCreator, Listene
             val dk = inputKey(spec.type, input.key)
             controls += when (input) {
                 is RequirementInput.NumberInput -> {
-                    val initial = (saved?.get(input.key) as? Number)?.toFloat() ?: input.initial.toFloat()
-                    DialogInput.numberRange(dk, Component.text(input.label), input.min.toFloat(), input.max.toFloat())
+                    val min = input.min.toFloat()
+                    val max = input.max.toFloat()
+                    val initial = ((saved?.get(input.key) as? Number)?.toFloat() ?: input.initial.toFloat())
+                        .coerceIn(min, max)
+                    DialogInput.numberRange(dk, Component.text(input.label), min, max)
                         .step(input.step.toFloat()).initial(initial).width(300).build()
                 }
                 is RequirementInput.TextInput -> {

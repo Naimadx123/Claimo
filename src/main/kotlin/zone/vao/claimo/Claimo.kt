@@ -156,8 +156,8 @@ class Claimo : JavaPlugin(), ClaimoService {
             },
             listOf(
                 RequirementInput.NumberInput("amount", "Messages to send", min = 0.0, max = 100_000.0, step = 5.0),
-                RequirementInput.NumberInput("min-length", "Min message length", min = 1.0, max = 256.0, step = 1.0),
-                RequirementInput.NumberInput("delay-seconds", "Delay between messages (s)", min = 0.0, max = 3600.0, step = 5.0),
+                RequirementInput.NumberInput("min-length", "Min message length", min = 1.0, max = 256.0, step = 1.0, initial = 10.0),
+                RequirementInput.NumberInput("delay-seconds", "Delay between messages (s)", min = 0.0, max = 3600.0, step = 5.0, initial = 20.0),
             ),
         )
         requirementRegistry.register(
