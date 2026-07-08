@@ -10,8 +10,6 @@ import io.papermc.paper.registry.data.dialog.body.DialogBody
 import io.papermc.paper.registry.data.dialog.input.DialogInput
 import io.papermc.paper.registry.data.dialog.type.DialogType
 import net.kyori.adventure.key.Key
-import net.kyori.adventure.text.Component
-import net.kyori.adventure.text.format.NamedTextColor
 import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
@@ -37,31 +35,28 @@ class DialogCodePrompt(private val plugin: Claimo) : CodePrompt, Listener {
         }
     }
 
-    private fun build(): Dialog =
-        Dialog.create { factory ->
+    private fun build(): Dialog {
+        val messages = plugin.configManager.config.messages
+        return Dialog.create { factory ->
             factory.empty()
                 .base(
-                    DialogBase.builder(Component.text("Redeem a code"))
-                        .body(listOf(DialogBody.plainMessage(Component.text("Enter your reward code below."))))
+                    DialogBase.builder(messages.line("prompt-title"))
+                        .body(listOf(DialogBody.plainMessage(messages.line("prompt-body"))))
                         .inputs(
                             listOf(
-                                DialogInput.text("code", Component.text("Code")).maxLength(64).width(300).build(),
+                                DialogInput.text("code", messages.line("prompt-code-label")).maxLength(64).width(300).build(),
                             ),
                         )
                         .build(),
                 )
                 .type(
                     DialogType.confirmation(
-                        ActionButton.create(
-                            Component.text("Redeem", NamedTextColor.GREEN),
-                            null,
-                            100,
-                            DialogAction.customClick(SUBMIT, null),
-                        ),
-                        ActionButton.create(Component.text("Cancel", NamedTextColor.RED), null, 100, null),
+                        ActionButton.create(messages.line("prompt-redeem"), null, 100, DialogAction.customClick(SUBMIT, null)),
+                        ActionButton.create(messages.line("prompt-cancel"), null, 100, null),
                     ),
                 )
         }
+    }
 
     private companion object {
         val SUBMIT: Key = Key.key("claimo", "redeem_submit")

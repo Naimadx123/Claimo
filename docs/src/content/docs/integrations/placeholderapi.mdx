@@ -1,0 +1,51 @@
+---
+title: PlaceholderAPI
+description: The claimo expansion and how Claimo uses PlaceholderAPI both ways.
+---
+
+import { Aside, Badge } from '@astrojs/starlight/components';
+
+Claimo integrates with [PlaceholderAPI](https://www.spigotmc.org/resources/placeholderapi.6245/)
+in **both directions** — it consumes placeholders *and* provides its own.
+
+<Aside type="tip" title="Fully optional">
+	PlaceholderAPI is a soft dependency. Everything below only activates when it's
+	installed; without it, Claimo runs fine and simply skips these features.
+</Aside>
+
+## Claimo consumes placeholders
+
+With PlaceholderAPI installed:
+
+- **In commands** — any `%placeholder%` in a voucher's `cmd` (beyond `%player%`) is
+  resolved for the redeeming player, e.g. `%player_uuid%`, `%vault_eco_balance%`.
+- **In the `custom` requirement** — compare any PAPI value to a target with an operator.
+  See [Requirements → `custom`](/guides/requirements/#custom).
+
+## Claimo provides the `claimo` expansion
+
+Claimo registers a `claimo` expansion so other plugins — scoreboards, holograms, GUIs —
+can read voucher state. Replace `<id>` with a code name.
+
+| Placeholder | Value |
+| --- | --- |
+| `%claimo_total_codes%` | Number of loaded codes |
+| `%claimo_uses_<id>%` | Total (global) redemptions of the code |
+| `%claimo_player_uses_<id>%` | Redemptions by the viewing player |
+| `%claimo_remaining_<id>%` | Redemptions left (per its limit mode), or `unlimited` |
+| `%claimo_limit_<id>%` | The code's limit amount, or `unlimited` |
+| `%claimo_can_redeem_<id>%` | `true`/`false` — not expired and not exhausted for the player |
+| `%claimo_expired_<id>%` | `true`/`false` |
+
+### Example
+
+Show a player how many times they can still redeem the `welcome` code on a scoreboard:
+
+```text
+Welcome reward: %claimo_remaining_welcome% left
+```
+
+<Aside type="note">
+	The expansion is registered at startup only when PlaceholderAPI is enabled, so its
+	classes are never linked on servers that don't have it.
+</Aside>

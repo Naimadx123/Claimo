@@ -1,0 +1,64 @@
+---
+title: Events
+description: React to redemptions — cancel them or observe them after the fact.
+---
+
+import { Aside, Badge } from '@astrojs/starlight/components';
+
+Claimo fires two Bukkit events around every redemption, in the `zone.vao.claimo.event`
+package. Listen to them like any other Bukkit event.
+
+## Events
+
+| Event | When | Notes |
+| --- | --- | --- |
+| `PlayerRedeemVoucherEvent` | Requirements passed, **before** commands run | <Badge text="Cancellable" variant="danger" /> Cancel to block the redemption — no commands, no success message. Exposes `player`, `voucher`. |
+| `VoucherRedeemedEvent` | **After** the commands were dispatched | Informational. Exposes `player`, `voucher`. |
+
+## Cancelling a redemption
+
+`PlayerRedeemVoucherEvent` is `Cancellable`. Cancel it to veto a redeem — for example, to
+enforce a check your own plugin owns:
+
+```kotlin
+import org.bukkit.event.EventHandler
+import org.bukkit.event.Listener
+import zone.vao.claimo.event.PlayerRedeemVoucherEvent
+
+class RedeemGuard : Listener {
+    @EventHandler
+    fun onRedeem(event: PlayerRedeemVoucherEvent) {
+        if (isBanned(event.player)) {
+            event.isCancelled = true
+        }
+    }
+}
+```
+
+<Aside type="caution">
+	When you cancel `PlayerRedeemVoucherEvent`, the commands never run and the player sees no
+	success message. Send your own feedback if you want the player to know why.
+</Aside>
+
+## Observing a completed redeem
+
+`VoucherRedeemedEvent` fires after the commands were dispatched — use it for logging,
+analytics or side effects:
+
+```kotlin
+import org.bukkit.event.EventHandler
+import org.bukkit.event.Listener
+import zone.vao.claimo.event.VoucherRedeemedEvent
+
+class RedeemStats : Listener {
+    @EventHandler
+    fun onRedeemed(event: VoucherRedeemedEvent) {
+        analytics.record(event.player.uniqueId, event.voucher.id)
+    }
+}
+```
+
+<Aside type="tip">
+	Claimo's own redeem log (`logging.redeems`) is built exactly this way — a listener on
+	`VoucherRedeemedEvent` appending to `logs/redeems.log`.
+</Aside>

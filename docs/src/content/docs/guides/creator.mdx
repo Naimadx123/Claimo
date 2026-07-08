@@ -1,0 +1,81 @@
+---
+title: The in-game creator
+description: Build, edit and delete codes from a Dialog wizard on Paper 1.21.7+.
+sidebar:
+  badge:
+    text: 1.21.7+
+    variant: tip
+---
+
+import { Steps, Aside, Badge, CardGrid, Card } from '@astrojs/starlight/components';
+
+On Paper **1.21.7+**, `/<command> create` opens a multi-page **Dialog** wizard so you can
+author codes without touching a single file.
+
+<Aside type="caution" title="Version gated">
+	The Dialog API only exists on Paper **1.21.7+**. On 1.21.1–1.21.6 the creator is
+	automatically disabled — the plugin still loads and everything else works, and
+	`/<command> create` reports that it's unavailable. There, [author voucher files
+	manually](/guides/vouchers/).
+</Aside>
+
+## Creating a code
+
+<Steps>
+1. Run `/<command> create` (requires `claimo.admin`).
+2. **Page 1 — the code itself:**
+   - **Name** — the code players type.
+   - **Command** — the command it runs (supports `%player%`).
+   - **Run as console** — toggle on to run with console permissions.
+   - **Hide from list** — keep it out of the GUI and tab-completion.
+   - **Usage limit** — an optional max-uses value with a per-player / shared toggle.
+3. **Following page(s) — requirements:** every **registered** requirement type is listed
+   — built-in *and* any added by addons — each with an on/off toggle and its configurable
+   fields. Flip on the ones you want and fill in their values.
+4. Use **« Back / Next »** to move between pages, then click **Create** on the last page.
+   Claimo writes `vouchers/<name>.yml` and reloads.
+</Steps>
+
+<Aside type="note" title="Requirements are paginated">
+	If there are too many requirement types to fit on one page, the wizard adds more pages
+	automatically. Addon-registered types show up here too, as long as they declared their
+	input fields — see [Custom requirements](/api/requirements/).
+</Aside>
+
+## Editing a code
+
+`/<command> edit <voucher>` reopens the same wizard **pre-filled** from an existing code
+and overwrites it on save.
+
+<Aside type="caution">
+	- The **id can't be changed** from the edit dialog.
+	- A code with several `cmd` lines **collapses to the single command field** — keep
+	  multi-command codes file-edited to avoid losing the extra lines.
+</Aside>
+
+## Deleting a code
+
+`/<command> delete <voucher>` shows a confirmation dialog and removes the file.
+
+## When to edit files instead
+
+The creator covers the common case. Reach for the [voucher file](/guides/vouchers/)
+directly for advanced options:
+
+<CardGrid>
+	<Card title="Multiple commands" icon="list-format">
+		Several `cmd` lines that all run on redeem.
+	</Card>
+	<Card title="Whitelist / blacklist" icon="approve-check">
+		Material filters on the `blocks_mined` requirement.
+	</Card>
+	<Card title="Expiry" icon="star">
+		A human-friendly `expires` duration like `30d` or `1d12h`.
+	</Card>
+</CardGrid>
+
+## How the gating works under the hood
+
+The jar is built against the 1.21.8 API (which has Dialog) but keeps `api-version: 1.21`.
+All Dialog code is **isolated and loaded reflectively**, so the JVM never verification-loads
+those classes on older servers — that's what keeps Claimo safe all the way down to 1.21.1.

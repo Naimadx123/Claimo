@@ -1,0 +1,108 @@
+---
+title: Storage backends
+description: Where Claimo persists redemption counts — from zero-setup YAML to shared databases.
+---
+
+import { Aside, Badge, Tabs, TabItem, CardGrid, Card } from '@astrojs/starlight/components';
+
+Claimo stores **redemption counts** — global pools and per-player usage — in a backend you
+choose under `storage:` in `config.yml`.
+
+<Aside type="caution" title="Restart required">
+	Changing `storage.type` requires a **server restart**, not just `/code reload`.
+</Aside>
+
+## Choosing a backend
+
+<CardGrid>
+	<Card title="Single server, no setup" icon="approve-check">
+		Use **`yaml`** or **`sqlite`** — nothing to install, data stays local.
+	</Card>
+	<Card title="Multiple servers" icon="random">
+		Use **`mysql`**, **`postgresql`** or **`mongodb`** so a shared database keeps pools
+		consistent across a network.
+	</Card>
+</CardGrid>
+
+| `type` | Setup | Best for |
+| --- | --- | --- |
+| `yaml` | None → `plugins/Claimo/usage.yml` | Single server, human-readable |
+| `sqlite` | None → `plugins/Claimo/data.db` | Single server, more robust than YAML |
+| `mysql` | Shared database | Multi-server networks |
+| `postgresql` | Shared database | Multi-server networks |
+| `mongodb` | Shared database | Multi-server networks |
+
+<Aside type="tip" title="MariaDB">
+	MariaDB is served by the **`mysql`** backend — its driver speaks the MariaDB protocol —
+	so either `mysql` or `mariadb` works as the type.
+</Aside>
+
+## Configuration
+
+The `host`, `port`, `database`, `username`, `password`, `table-prefix` and `pool-size`
+keys apply to the **network backends** (`mysql` / `postgresql` / `mongodb`). The local
+backends ignore them.
+
+<Tabs>
+	<TabItem label="YAML / SQLite" icon="document">
+		Zero setup — just pick the type. Data lives in the plugin folder.
+		```yaml title="config.yml"
+		storage:
+		  type: yaml     # or: sqlite
+		```
+	</TabItem>
+	<TabItem label="MySQL / MariaDB" icon="seti:db">
+		```yaml title="config.yml"
+		storage:
+		  type: mysql
+		  host: localhost
+		  port: 3306
+		  database: claimo
+		  username: root
+		  password: "secret"
+		  table-prefix: claimo_
+		  pool-size: 10
+		```
+	</TabItem>
+	<TabItem label="PostgreSQL" icon="seti:db">
+		```yaml title="config.yml"
+		storage:
+		  type: postgresql
+		  host: localhost
+		  port: 5432
+		  database: claimo
+		  username: postgres
+		  password: "secret"
+		  table-prefix: claimo_
+		  pool-size: 10
+		```
+	</TabItem>
+	<TabItem label="MongoDB" icon="seti:db">
+		```yaml title="config.yml"
+		storage:
+		  type: mongodb
+		  # A full connection string overrides host/port/credentials when set.
+		  uri: "mongodb+srv://user:pass@cluster.example.net"
+		  database: claimo
+		  table-prefix: claimo_
+		```
+	</TabItem>
+</Tabs>
+
+## Key reference
+
+| Key | Applies to | Meaning |
+| --- | --- | --- |
+| `type` | all | The backend. `yaml`, `sqlite`, `mysql`, `postgresql` or `mongodb`. |
+| `uri` | mongodb | Full connection string (e.g. `mongodb+srv://…`). When set, it **overrides** host/port/credentials. |
+| `host` / `port` | network | Server address. |
+| `database` | network | Database (Mongo: which database) to use. |
+| `username` / `password` | network | Credentials. |
+| `table-prefix` | network | Prefix for tables (Mongo: collections). |
+| `pool-size` | network | Connection pool size. |
+
+<Aside type="note" title="MongoDB URI vs fields">
+	For MongoDB you may set `uri` to a full connection string. When present it overrides
+	`host`/`port`/credentials, while `database` still selects the database and
+	`table-prefix` still prefixes the collections.
+</Aside>

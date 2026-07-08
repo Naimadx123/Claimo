@@ -2,6 +2,16 @@ command: code
 dialog_code_input: codeinput # comment this line if you don't want dialog input code
 gui-list-enabled: true
 
+redeem-sound:
+  enabled: true
+  key: "minecraft:entity.player.levelup" # any sound key, incl. custom resourcepack sounds
+  source: master
+  volume: 1.0
+  pitch: 1.0
+
+logging:
+  redeems: true
+
 storage:
   type: yaml
   uri: ""

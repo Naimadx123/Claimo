@@ -1,0 +1,55 @@
+---
+title: gui.yml
+description: The paginated voucher list GUI shown when the bare command is run.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Running the bare command with no argument opens a paginated GUI listing every visible
+code; clicking one redeems it. `gui.yml` controls its look.
+
+```yaml title="plugins/Claimo/gui.yml"
+title: "<dark_gray>Available codes (<page>/<pages>)"
+rows: 6
+filler: GRAY_STAINED_GLASS_PANE
+voucher-material: PAPER
+voucher-name: "<aqua><voucher>"
+voucher-lore:
+  - "<gray>Click to redeem this code."
+previous-material: ARROW
+previous-name: "<yellow>« Previous page"
+next-material: ARROW
+next-name: "<yellow>Next page »"
+```
+
+## Keys
+
+| Key | Meaning |
+| --- | --- |
+| `title` | Inventory title. Placeholders: `<page>`, `<pages>`. |
+| `rows` | Inventory height, **clamped to 2–6**. The bottom row holds page navigation. |
+| `filler` | Background material. Set `NONE` for no background. |
+| `voucher-material` | The item each code is shown as. |
+| `voucher-name` | Display name of a code item. Placeholders: `<voucher>`, `<expires>`. |
+| `voucher-lore` | Lore lines of a code item. Same placeholders as `voucher-name`. |
+| `previous-material` / `previous-name` | The "previous page" button. |
+| `next-material` / `next-name` | The "next page" button. |
+
+## Placeholders
+
+| Placeholder | Where | Value |
+| --- | --- | --- |
+| `<page>` / `<pages>` | `title` | Current page / total pages. |
+| `<voucher>` | `voucher-name`, `voucher-lore` | The code name. |
+| `<expires>` | `voucher-name`, `voucher-lore` | Human-friendly remaining time, or `never`. |
+
+<Aside type="note">
+	Codes with `hide: true` never appear in the GUI (nor in tab-completion) — they stay
+	redeemable by typing the code directly.
+</Aside>
+
+<Aside type="tip">
+	All text values are MiniMessage, so the same tags and gradients you use in
+	[messages.yml](/configuration/messages/) work here too. Set `filler: NONE` for a clean,
+	background-free menu.
+</Aside>

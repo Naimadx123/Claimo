@@ -1,0 +1,153 @@
+---
+title: Voucher files
+description: Every field of a vouchers/<code>.yml file, explained.
+---
+
+import { Aside, Badge, Tabs, TabItem } from '@astrojs/starlight/components';
+
+Each file in `plugins/Claimo/vouchers/` defines one voucher. The **file name** (without
+`.yml`) is the code players redeem. Add a code by dropping in a new file, then run
+`/code reload`.
+
+## A complete example
+
+```yaml title="plugins/Claimo/vouchers/test.yml"
+# vouchers/test.yml  →  redeemed with /code test
+
+# One command (string) or several (list). A leading "/" is optional.
+# %player% is replaced with the player's name. If PlaceholderAPI is installed,
+# any other %placeholder% (e.g. %player_uuid%, %vault_eco_balance%) is resolved too.
+cmd: "lp user %player% parent addtemp vip 7d"
+# Run as console (true) or as the player (false). Default: true.
+console: true
+# Hide from the GUI and tab-completion (still redeemable by code). Default: false.
+hide: false
+# Optional expiry as a human-friendly duration: s, m, h, d, w — e.g. 500s, 10m,
+# 5d, 10w, or combined 1d12h. Counted from `created` if present, otherwise from
+# the file's last-modified time. Omit for a code that never expires.
+expires: 30d
+# Optional redemption limit. Omit for unlimited.
+limit:
+  mode: per-player
+  amount: 1
+# All requirements must pass before the code is redeemable. Optional.
+requirements:
+  - type: blocks_mined
+    amount: 100
+```
+
+## Fields
+
+### `cmd` — the command(s) to run
+
+The heart of a voucher. Accepts a single string or a list of strings; a leading `/` is
+optional.
+
+<Tabs>
+	<TabItem label="Single command">
+		```yaml
+		cmd: "give %player% diamond 5"
+		```
+	</TabItem>
+	<TabItem label="Multiple commands">
+		```yaml
+		cmd:
+		  - "give %player% diamond 5"
+		  - "eco give %player% 100"
+		  - "broadcast %player% just redeemed a reward!"
+		```
+	</TabItem>
+</Tabs>
+
+- `%player%` is replaced with the redeeming player's name.
+- With **PlaceholderAPI** installed, any other `%placeholder%` (e.g. `%player_uuid%`,
+  `%vault_eco_balance%`) is resolved too.
+
+### `console` — who runs the command
+
+<Badge text="default: true" variant="note" /> — run the command as **console** (`true`)
+or as the **player** (`false`).
+
+```yaml
+console: false   # runs as the player, with their permissions
+```
+
+### `hide` — keep it out of listings
+
+<Badge text="default: false" variant="note" /> — when `true`, the code is excluded from
+the GUI and tab-completion but stays redeemable by typing it exactly. Ideal for secret or
+event codes.
+
+### `expires` — a time limit
+
+A human-friendly duration, omit for a code that never expires.
+
+| Unit | Meaning | Example |
+| --- | --- | --- |
+| `s` | seconds | `500s` |
+| `m` | minutes | `10m` |
+| `h` | hours | `12h` |
+| `d` | days | `5d` |
+| `w` | weeks | `10w` |
+
+Units combine: `1d12h` means one and a half days.
+
+<Aside type="note" title="What is it counted from?">
+	Expiry counts from the `created` timestamp (epoch millis, written by the in-game
+	creator) when present, otherwise from the file's **last-modified time**.
+</Aside>
+
+### `limit` — redemption caps
+
+Omit for unlimited redemptions.
+
+<Tabs>
+	<TabItem label="per-player">
+		Each player may redeem `amount` times — no shared pool.
+		```yaml
+		limit:
+		  mode: per-player
+		  amount: 1
+		```
+	</TabItem>
+	<TabItem label="global">
+		A shared pool of `amount` one-time redemptions: the first `amount` distinct players
+		each redeem once, then the code is gone.
+		```yaml
+		limit:
+		  mode: global
+		  amount: 50
+		```
+	</TabItem>
+</Tabs>
+
+`amount` defaults to `1`.
+
+<Aside type="tip" title="No double-spend">
+	Global pools are re-checked authoritatively inside a single-threaded scheduler block on
+	redeem, so two players hitting the last slot at once can't both win it.
+</Aside>
+
+### `requirements` — gates that must pass
+
+An optional list of checks; **all** must pass before the code redeems. Each entry has a
+`type` and that type's own parameters.
+
+```yaml
+requirements:
+  - type: playtime
+    seconds: 3600
+  - type: account_age
+    days: 7
+```
+
+See [Requirements](/guides/requirements/) for the full catalogue of built-in types and
+their parameters.
+
+## Reloading
+
+After editing any voucher file, apply your changes:
+
+```text
+/code reload
+```

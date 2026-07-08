@@ -1,0 +1,101 @@
+---
+title: Custom requirements
+description: Implement, register and use your own requirement type end to end.
+---
+
+import { Steps, Aside, Badge } from '@astrojs/starlight/components';
+
+A worked example: a `tiktok_follow` requirement that only passes when the player follows
+a given TikTok account.
+
+<Steps>
+
+1. ### Implement a `Requirement`
+
+   `Requirement.check(...)` returns a `CompletableFuture<RequirementResult>`, so network
+   calls — a social-follow check, a web API — run **off the main thread**. Return
+   `RequirementResult.satisfied(description)` or `.unsatisfied(description)`.
+
+   ```kotlin
+   import net.kyori.adventure.text.Component
+   import zone.vao.claimo.requirement.Requirement
+   import zone.vao.claimo.requirement.RequirementContext
+   import zone.vao.claimo.requirement.RequirementResult
+   import java.util.concurrent.CompletableFuture
+
+   class TikTokFollowRequirement(private val account: String) : Requirement {
+       override fun check(context: RequirementContext): CompletableFuture<RequirementResult> {
+           return myTikTokClient.isFollowing(context.player.uniqueId, account).thenApply { follows ->
+               val description = Component.text("Follow @$account on TikTok")
+               if (follows) RequirementResult.satisfied(description)
+               else RequirementResult.unsatisfied(description)
+           }
+       }
+   }
+   ```
+
+   <Aside type="tip" title="Phrase the description neutrally">
+   	The `description` is the line shown in the requirement checklist — wrapped in
+   	`requirement-met` / `requirement-unmet` from
+   	[messages.yml](/configuration/messages/). The **same text** is shown whether the check
+   	passed or failed, so phrase it neutrally: `Follow @Naimadx123 on TikTok`, not
+   	`You must follow…`.
+   </Aside>
+
+2. ### Register the type
+
+   From your plugin's `onEnable`:
+
+   ```kotlin
+   import zone.vao.claimo.ClaimoApi
+   import zone.vao.claimo.requirement.RequirementInput
+
+   ClaimoApi.registerRequirement(
+       "tiktok_follow",
+       { cfg -> TikTokFollowRequirement(cfg.getString("account")!!) },
+       // Optional: makes the requirement appear (and be configurable) in /code create.
+       listOf(RequirementInput.TextInput("account", "TikTok account")),
+   )
+   ```
+
+   `cfg` is the `RequirementConfig` for that entry; read your own parameters from it with
+   `getString`, `getInt`, `getLong`, `getDouble`, `getBoolean`, `getStringList` and `has`.
+
+   <Aside type="caution" title="Throwing is safe">
+   	Throwing inside the factory marks the requirement as **failed for that redeem** rather
+   	than crashing the command. Fail loudly in the factory when config is invalid.
+   </Aside>
+
+3. ### Use it in a voucher
+
+   ```yaml title="vouchers/social_reward.yml"
+   cmd: "give %player% diamond 5"
+   requirements:
+     - type: tiktok_follow
+       account: vao.zone
+   ```
+
+</Steps>
+
+## Showing up in the creator
+
+The optional `inputs` list tells the in-game creator what fields to render for your type
+and which config keys to write:
+
+| Descriptor | Renders |
+| --- | --- |
+| `RequirementInput.TextInput(key, label)` | A text field. |
+| `RequirementInput.NumberInput(key, label)` | A number field. |
+| `RequirementInput.BoolInput(key, label)` | An on/off toggle. |
+
+<Aside type="note">
+	Omit the `inputs` list (use the two-argument overload) and the type still works in files
+	and appears in the creator as a plain on/off toggle with no parameters. Every registered
+	type — including yours — is rendered in `/code create`.
+</Aside>
+
+## Lazy resolution
+
+Requirements are resolved **lazily** on each redeem, so registering a type *after* Claimo
+has already loaded its config — the normal case for addons — works fine. No load-order
+gymnastics needed beyond `depend: [Claimo]`.

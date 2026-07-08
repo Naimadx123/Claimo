@@ -22,6 +22,11 @@ class VoucherService(private val plugin: Claimo) {
             return
         }
 
+        if (voucher.isExpired()) {
+            messages.send(player, "code-expired", Placeholder.parsed("voucher", voucherId))
+            return
+        }
+
         if (plugin.usageService.isExhausted(player, voucher)) {
             sendLimitMessage(player, voucher)
             return
@@ -68,6 +73,7 @@ class VoucherService(private val plugin: Claimo) {
 
                 execute(player, voucher)
                 plugin.usageService.record(player, voucher)
+                config.redeemSound.sound?.let(player::playSound)
                 VoucherRedeemedEvent(player, voucher).callEvent()
                 messages.send(player, "success", Placeholder.parsed("voucher", voucherId))
             }

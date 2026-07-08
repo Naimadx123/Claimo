@@ -34,6 +34,7 @@ jobs:
           ./gradlew clean build -Pversion=${{ steps.version.outputs.version }} --stacktrace
 
       - name: Create release
+        if: ${{ !endsWith(steps.version.outputs.version, '-SNAPSHOT') }}
         uses: softprops/action-gh-release@v2
         with:
           name: Claimo ${{ steps.version.outputs.version }}

@@ -1,0 +1,69 @@
+---
+title: Introduction
+description: What Claimo is, who it's for, and how the pieces fit together.
+---
+
+import { Aside, Badge, CardGrid, LinkCard } from '@astrojs/starlight/components';
+
+**Claimo** is a voucher / code redemption plugin for **PaperMC 1.21.1 – 26.2**.
+Players redeem codes with a configurable command; each code runs one or more server
+commands and can gate redemption behind **requirements** (blocks mined, playtime, …).
+
+The requirement system is a **public API**, so addons can plug in new checks — e.g.
+*"follows us on TikTok / YouTube / X / Instagram"*.
+
+<Aside type="tip" title="Built for Paper">
+	Claimo targets Paper and its API. It keeps `api-version: 1.21`, so it loads on every
+	release from **1.21.1** upward, while optional features light up on newer versions.
+</Aside>
+
+## How it works
+
+1. An admin defines a **voucher** — a code name, the command(s) it runs, and optional
+   requirements and limits.
+2. A player runs `/<command> <voucher>` (or clicks it in the GUI).
+3. Claimo checks every requirement. If they all pass, the commands run and the player
+   sees a success message; otherwise a checklist of met / unmet requirements is shown.
+
+## Key concepts
+
+<CardGrid>
+	<LinkCard
+		title="Vouchers"
+		description="One .yml file per code. The file name is the code players type."
+		href="/guides/vouchers/"
+	/>
+	<LinkCard
+		title="Requirements"
+		description="Optional gates that must all pass before a code is redeemable."
+		href="/guides/requirements/"
+	/>
+	<LinkCard
+		title="Commands & permissions"
+		description="How players redeem and how admins manage codes."
+		href="/guides/commands/"
+	/>
+	<LinkCard
+		title="Configuration"
+		description="config.yml, messages.yml, gui.yml and storage backends."
+		href="/configuration/overview/"
+	/>
+</CardGrid>
+
+## Version compatibility
+
+| Feature | Minimum version |
+| --- | --- |
+| Core plugin (redeem, GUI, requirements, storage) | Paper **1.21.1** |
+| In-game creator — `/code create`, `edit`, `delete` | Paper **1.21.7+** <Badge text="Dialog API" variant="tip" /> |
+
+<Aside type="note">
+	On 1.21.1–1.21.6 the plugin still loads and everything else works — only the Dialog
+	creator is disabled. See [The in-game creator](/guides/creator/) for details.
+</Aside>
+
+## Downloads
+
+- [Modrinth](https://modrinth.com/plugin/claimo)
+- [BuiltByBit](https://builtbybit.com/resources/claimo.115049/)
+- [Voxel Shop](https://voxel.shop/product/9982/claimo)

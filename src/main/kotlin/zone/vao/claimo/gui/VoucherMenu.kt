@@ -17,6 +17,7 @@ import org.bukkit.inventory.InventoryHolder
 import org.bukkit.inventory.ItemStack
 import zone.vao.claimo.Claimo
 import zone.vao.claimo.config.GuiConfig
+import zone.vao.claimo.util.Durations
 import zone.vao.claimo.voucher.Voucher
 import kotlin.math.ceil
 import kotlin.math.max
@@ -26,7 +27,7 @@ class VoucherMenu(private val plugin: Claimo) : Listener {
     fun open(player: Player, page: Int) {
         val config = plugin.configManager.config
         val gui = config.gui
-        val visible = config.vouchers.values.filter { !it.hidden }
+        val visible = config.vouchers.values.filter { !it.hidden && !it.isExpired() }
 
         val size = gui.rows * 9
         val perPage = size - 9
@@ -94,15 +95,23 @@ class VoucherMenu(private val plugin: Claimo) : Listener {
     }
 
     private fun voucherIcon(gui: GuiConfig, voucher: Voucher): ItemStack {
-        val resolver = Placeholder.parsed("voucher", voucher.id)
+        val resolvers = arrayOf(
+            Placeholder.parsed("voucher", voucher.id),
+            Placeholder.parsed("expires", expiresText(voucher)),
+        )
         return ItemStack(gui.voucherMaterial).apply {
             editMeta { meta ->
-                meta.displayName(text(gui.voucherName, resolver))
+                meta.displayName(text(gui.voucherName, *resolvers))
                 if (gui.voucherLore.isNotEmpty()) {
-                    meta.lore(gui.voucherLore.map { text(it, resolver) })
+                    meta.lore(gui.voucherLore.map { text(it, *resolvers) })
                 }
             }
         }
+    }
+
+    private fun expiresText(voucher: Voucher): String {
+        val expiresAt = voucher.expiresAt ?: return "never"
+        return Durations.humanize(expiresAt - System.currentTimeMillis())
     }
 
     private fun icon(material: Material, name: Component): ItemStack =

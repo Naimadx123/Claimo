@@ -1,0 +1,55 @@
+---
+title: Commands & permissions
+description: Every Claimo command, what it does, and the permission it needs.
+---
+
+import { Aside, Badge } from '@astrojs/starlight/components';
+
+Claimo registers a single root command whose name you choose. Everything — redeeming,
+the GUI, and admin management — hangs off it.
+
+## Command reference
+
+| Command | Description | Permission |
+| --- | --- | --- |
+| `/<command>` | Open the paginated voucher GUI (players); print usage (console) | `claimo.use` |
+| `/<command> <voucher>` | Redeem a voucher | `claimo.use` |
+| `/<command> create` | Open the in-game code creator dialog <Badge text="1.21.7+" variant="tip" /> | `claimo.admin` |
+| `/<command> edit <voucher>` | Edit an existing code in the dialog wizard <Badge text="1.21.7+" variant="tip" /> | `claimo.admin` |
+| `/<command> delete <voucher>` | Delete a code (with a confirm dialog) <Badge text="1.21.7+" variant="tip" /> | `claimo.admin` |
+| `/<command> reload` | Reload config and voucher files | `claimo.admin` |
+
+## Permissions
+
+| Node | Grants | Default |
+| --- | --- | --- |
+| `claimo.use` | Redeem codes and open the GUI | everyone |
+| `claimo.admin` | Create, edit, delete and reload | op |
+
+## The command name
+
+`<command>` defaults to `code` and is set by the `command:` key in `config.yml`. There's
+also a permanent `/claimo` alias.
+
+```yaml title="config.yml"
+# Players redeem with /kod <voucher> instead of /code <voucher>
+command: kod
+```
+
+<Aside type="caution" title="Restart required">
+	Changing `command:` requires a **server restart** — it's registered with the server at
+	startup, so `/code reload` alone won't move it.
+</Aside>
+
+## Behaviour notes
+
+- Voucher names **tab-complete** on the redeem argument.
+- Running the command with **no argument** opens the paginated GUI listing available
+  codes; clicking one redeems it. (Set `gui-list-enabled: false` to disable.)
+- Vouchers with `hide: true` are excluded from both the GUI and tab-completion — they
+  stay redeemable by typing the exact code.
+
+<Aside type="tip">
+	From the console, the bare command prints usage instead of opening a GUI (there's no
+	inventory to show), and redeeming requires a player context.
+</Aside>

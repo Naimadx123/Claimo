@@ -1,0 +1,62 @@
+---
+title: Developer API overview
+description: Depend on Claimo and extend it with your own requirement types.
+sidebar:
+  badge:
+    text: Addons
+    variant: note
+---
+
+import { Steps, Aside, Tabs, TabItem, LinkCard, CardGrid } from '@astrojs/starlight/components';
+
+Addons extend Claimo by registering new requirement **types**. A type is just a key (used
+in a voucher file) bound to a factory that builds a `Requirement`. This means you can add
+checks Claimo doesn't ship — a social-media follow, a web-API lookup, a Discord role —
+without forking the plugin.
+
+<Aside type="tip" title="The API is a separate artifact">
+	The public API lives in its own `zone.vao:claimo-api` module, published to
+	`repo.vao.zone`, so you compile against just the API — not the whole plugin.
+</Aside>
+
+## Depend on Claimo
+
+<Tabs>
+	<TabItem label="Gradle (Kotlin)" icon="seti:gradle">
+		```kotlin title="build.gradle.kts"
+		repositories {
+		    maven("https://repo.vao.zone/releases")   // or /snapshots for -SNAPSHOT versions
+		}
+		dependencies {
+		    compileOnly("zone.vao:claimo-api:1.0-SNAPSHOT")
+		}
+		```
+	</TabItem>
+	<TabItem label="plugin.yml" icon="seti:yml">
+		```yaml title="plugin.yml"
+		depend: [Claimo]     # or softdepend: [Claimo]
+		```
+	</TabItem>
+</Tabs>
+
+<Aside type="note" title="Load order">
+	Depending on Claimo guarantees your plugin enables **after** it, so the API is ready by
+	the time your `onEnable` runs.
+</Aside>
+
+## The three steps
+
+<Steps>
+1. **Implement a `Requirement`** — an async check that returns satisfied / unsatisfied.
+2. **Register the type** from your `onEnable`, optionally declaring input fields so it
+   shows up in the in-game creator.
+3. **Use it in a voucher** by its type key.
+</Steps>
+
+Each step has its own page:
+
+<CardGrid>
+	<LinkCard title="Custom requirements" description="Implement and register a requirement type." href="/api/requirements/" />
+	<LinkCard title="Events" description="React to redemptions — cancel or observe them." href="/api/events/" />
+	<LinkCard title="API reference" description="The full ClaimoApi surface." href="/api/reference/" />
+</CardGrid>

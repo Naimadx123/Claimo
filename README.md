@@ -27,6 +27,8 @@ The shaded plugin jar is written to `build/libs/Claimo-v<version>.jar`.
 | `/<command>` | Open the paginated voucher GUI (players); print usage (console) | `claimo.use` (default: everyone) |
 | `/<command> <voucher>` | Redeem a voucher | `claimo.use` (default: everyone) |
 | `/<command> create` | Open the in-game code creator dialog (1.21.7+) | `claimo.admin` (default: op) |
+| `/<command> edit <voucher>` | Edit an existing code in the dialog wizard (1.21.7+) | `claimo.admin` (default: op) |
+| `/<command> delete <voucher>` | Delete a code (with a confirm dialog, 1.21.7+) | `claimo.admin` (default: op) |
 | `/<command> reload` | Reload config and voucher files | `claimo.admin` (default: op) |
 
 `<command>` defaults to `code` and is set by the `command:` config key (alias:
@@ -46,6 +48,11 @@ ones you want and set their values. Requirements are paginated, so if there are 
 many for one page the wizard adds another. Use « Back / Next » to move between pages
 and **Create** on the last page to write `vouchers/<name>.yml` and reload. For advanced
 options (multiple commands, whitelist/blacklist) edit the generated file.
+
+`/<command> edit <voucher>` reopens the same wizard pre-filled from an existing code and
+overwrites it on save (the id can't be changed here; a code with several `cmd` lines
+collapses to the single command field — keep those file-edited). `/<command> delete <voucher>`
+shows a confirmation dialog and removes the file.
 
 The Dialog API only exists on Paper **1.21.7+**. On 1.21.1–1.21.6 the creator is
 automatically disabled (the plugin still loads and everything else works);
@@ -75,6 +82,20 @@ plugins/Claimo/
 command: code
 # Open the paginated voucher GUI when the bare command is run with no argument.
 gui-list-enabled: true
+
+# Sound played to the player on a successful redeem.
+# key accepts any sound id, including custom resourcepack sounds (namespace:path).
+# source: master|music|record|weather|block|hostile|neutral|player|ambient|voice
+redeem-sound:
+  enabled: true
+  key: "minecraft:entity.player.levelup"
+  source: master
+  volume: 1.0
+  pitch: 1.0
+
+# Append every successful redeem to plugins/Claimo/logs/redeems.log.
+logging:
+  redeems: true
 
 # Where redemption counts (global pools and per-player usage) are stored.
 # type: yaml | sqlite | mysql | postgresql | mongodb
@@ -129,8 +150,9 @@ requirement's own `<description>`.
 ### `gui.yml`
 
 Title placeholders: `<page>`, `<pages>`. `voucher-name`/`voucher-lore`
-placeholder: `<voucher>`. Set `filler: NONE` for no background. `rows` is
-clamped to 2–6 (the bottom row holds the page navigation).
+placeholders: `<voucher>` and `<expires>` (human-friendly remaining time, or
+`never`). Set `filler: NONE` for no background. `rows` is clamped to 2–6 (the
+bottom row holds the page navigation).
 
 ```yaml
 title: "<dark_gray>Available codes (<page>/<pages>)"
@@ -162,6 +184,11 @@ cmd: "lp user %player% parent addtemp vip 7d"
 console: true
 # Hide from the GUI and tab-completion (still redeemable by code). Default: false.
 hide: false
+# Optional expiry as a human-friendly duration: s (seconds), m (minutes),
+# h (hours), d (days), w (weeks) — e.g. 500s, 10m, 5d, 10w, or combined 1d12h.
+# Counted from `created` if present (epoch millis, written by the in-game creator),
+# otherwise from the file's last-modified time. Omit for a code that never expires.
+expires: 30d
 # Optional redemption limit. Omit for unlimited.
 #   mode: global      -> shared pool of `amount` one-time redemptions: the first
 #                        `amount` distinct players each redeem once, then it's gone
@@ -206,12 +233,28 @@ requirements:
 | `account_age` | `days: <int>` | Player's account first joined the server at least `days` days ago — gates rewards away from brand-new accounts and alts. |
 | `permission` | `permissions: <node list>`, `denied-permissions: <node list>` | Player must have **at least one** of `permissions` (omit it for no positive requirement) and **none** of `denied-permissions`. Use the denied list to lock a code away from players who already hold a permission. Both accept a YAML list or a comma-separated string; the singular `permission` / `denied-permission` keys also work. |
 | `rank` | `ranks: <group list>`, `denied-ranks: <group list>` | Same as `permission` but for permission groups resolved via **Vault**: player must be in at least one of `ranks` and in none of `denied-ranks`. Requires a Vault provider (LuckPerms, etc.); without one a positive `ranks` requirement can't pass. The singular `rank` / `denied-rank` keys also work. |
+| `custom` | `placeholder: <string>`, `operator: <op>`, `value: <string>` | Resolves `placeholder` via **PlaceholderAPI** and compares it to `value`. `operator` is one of `== != contains regex >= <= > <` (numeric operators parse both sides as numbers). Lets you gate on anything PAPI exposes (economy, level, stats, …) without a dedicated requirement. Needs PlaceholderAPI installed. |
 
 Claimo stores a running total of blocks mined per player in their PDC. To keep
 player data small, a **per-material** counter is only kept for materials that
 actually appear in some voucher's `blocks_mined` whitelist/blacklist — every
 other block just bumps the total. The total is always exact; a material's
 per-type count begins accruing from when it first appears in the config.
+
+## Placeholders (PlaceholderAPI)
+
+With PlaceholderAPI installed, Claimo registers a `claimo` expansion so other plugins
+(scoreboards, holograms, GUIs) can read voucher state. Replace `<id>` with a code name:
+
+| Placeholder | Value |
+| --- | --- |
+| `%claimo_total_codes%` | Number of loaded codes |
+| `%claimo_uses_<id>%` | Total (global) redemptions of the code |
+| `%claimo_player_uses_<id>%` | Redemptions by the viewing player |
+| `%claimo_remaining_<id>%` | Redemptions left (per its limit mode), or `unlimited` |
+| `%claimo_limit_<id>%` | The code's limit amount, or `unlimited` |
+| `%claimo_can_redeem_<id>%` | `true`/`false` — not expired and not exhausted for the player |
+| `%claimo_expired_<id>%` | `true`/`false` |
 
 ## API — adding your own requirements
 
@@ -220,8 +263,7 @@ key (used in `config.yml`) bound to a factory that builds a `Requirement`.
 
 ### 1. Depend on Claimo
 
-Compile against the published API artifact (it ships only the API classes; the
-Claimo plugin provides the implementation at runtime):
+Compile against the published API artifact:
 
 ```kotlin
 repositories {
