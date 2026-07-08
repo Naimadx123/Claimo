@@ -22,9 +22,19 @@ export default defineConfig({
 					href: 'https://github.com/Naimadx123/Claimo',
 				},
 				{
-					icon: 'seti:yml',
+					icon: 'cloud-download',
 					label: 'Modrinth',
 					href: 'https://modrinth.com/plugin/claimo',
+				},
+				{
+					icon: 'cloud-download',
+					label: 'BuiltByBit',
+					href: 'https://builtbybit.com/resources/claimo.115049/',
+				},
+				{
+					icon: 'cloud-download',
+					label: 'voxel.shop',
+					href: 'https://voxel.shop/product/9982/claimo',
 				},
 			],
 			editLink: {
