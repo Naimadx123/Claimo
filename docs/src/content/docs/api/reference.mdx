@@ -1,0 +1,85 @@
+---
+title: API reference
+description: The ClaimoApi surface — registration, stats, vouchers and redeeming.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+The entry point is **`zone.vao.claimo.ClaimoApi`**. It exposes requirement registration,
+read-only stats, voucher lookup, and a programmatic redeem flow.
+
+## `ClaimoApi`
+
+| Member | Purpose |
+| --- | --- |
+| `registerRequirement(type, factory)` | Register a requirement type. |
+| `registerRequirement(type, factory, inputs)` | Register a type **and** declare its creator input fields. |
+| `unregisterRequirement(type)` | Remove a registered type. |
+| `requirements` | The `RequirementRegistry` (`isRegistered`, `types`, …). |
+| `stats` | `ClaimoStats` — read-only player statistics. |
+| `vouchers()` | List loaded vouchers. |
+| `voucher(id)` | Look one voucher up by id. |
+| `redeem(player, voucherId)` | Run the full redeem flow programmatically. |
+| `reload()` | Reload config and voucher files. |
+
+## `ClaimoStats`
+
+Read-only player statistics, reachable via `ClaimoApi.stats`:
+
+| Method | Returns |
+| --- | --- |
+| `blocksMined(player)` | Total blocks the player has broken. |
+| `blocksMined(player, whitelist, blacklist)` | Total broken, filtered by material lists. |
+| `playtimeSeconds(player)` | The player's total play-time in seconds. |
+
+<Aside type="tip">
+	`blocksMined` with material filters mirrors the `blocks_mined` requirement's counting —
+	handy if you want to show progress toward a code on your own scoreboard or GUI.
+</Aside>
+
+## Requirement building blocks
+
+These types live in the `zone.vao.claimo.requirement` package:
+
+| Type | Role |
+| --- | --- |
+| `Requirement` | The check you implement — `check(context)` returns a `CompletableFuture<RequirementResult>`. |
+| `RequirementContext` | Passed to `check` — exposes the `player`. |
+| `RequirementResult` | `satisfied(description)` / `unsatisfied(description)`. |
+| `RequirementConfig` | The parsed config for one requirement entry — `getString`, `getInt`, `getLong`, `getDouble`, `getBoolean`, `getStringList`, `has`. |
+| `RequirementInput` | Creator field descriptors: `TextInput`, `NumberInput`, `BoolInput`. |
+| `RequirementRegistry` | The live registry — `register`, `isRegistered`, `types`, `inputs(type)`. |
+
+## Where things live
+
+<Aside type="note" title="Module layout">
+	The API is the `zone.vao:claimo-api` artifact (a separate Gradle module) — it depends
+	only on the Paper API and JetBrains annotations. The plugin implements `ClaimoService`
+	and wires `ClaimoApi` to it at startup. You only ever compile against the API artifact;
+	see the [overview](/api/overview/) for the dependency snippet.
+</Aside>
+
+## Full example
+
+Putting registration, an event listener and stats together:
+
+```kotlin
+import org.bukkit.plugin.java.JavaPlugin
+import zone.vao.claimo.ClaimoApi
+import zone.vao.claimo.requirement.RequirementInput
+
+class MyAddon : JavaPlugin() {
+    override fun onEnable() {
+        ClaimoApi.registerRequirement(
+            "tiktok_follow",
+            { cfg -> TikTokFollowRequirement(cfg.getString("account")!!) },
+            listOf(RequirementInput.TextInput("account", "TikTok account")),
+        )
+        server.pluginManager.registerEvents(RedeemStats(), this)
+    }
+
+    override fun onDisable() {
+        ClaimoApi.unregisterRequirement("tiktok_follow")
+    }
+}
+```

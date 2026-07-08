@@ -1,0 +1,72 @@
+---
+title: Installation
+description: Install Claimo from a release jar or build it from source.
+---
+
+import { Steps, Tabs, TabItem, Aside, FileTree } from '@astrojs/starlight/components';
+
+Claimo ships as a single shaded jar. There are no required dependencies — optional
+integrations (PlaceholderAPI, Vault) are detected automatically when present.
+
+## Requirements
+
+- **PaperMC 1.21.1 – 26.2** (or a Paper fork). Spigot is not supported.
+- **Java 21+** (matching your Paper build).
+
+## Install the plugin
+
+<Tabs>
+	<TabItem label="From a release" icon="seti:yml">
+		<Steps>
+		1. Download the latest `Claimo-v<version>.jar` from
+		   [Modrinth](https://modrinth.com/plugin/claimo),
+		   [BuiltByBit](https://builtbybit.com/resources/claimo.115049/) or
+		   [Voxel Shop](https://voxel.shop/product/9982/claimo).
+		2. Drop the jar into your server's `plugins/` folder.
+		3. Start (or restart) the server. Claimo generates its config files on first run.
+		4. Edit the generated files and run `/code reload` to apply changes.
+		</Steps>
+	</TabItem>
+	<TabItem label="Build from source" icon="seti:gradle">
+		<Steps>
+		1. Clone the repository:
+		   ```bash
+		   git clone https://github.com/Naimadx123/Claimo.git
+		   cd Claimo
+		   ```
+		2. Build the shaded jar:
+		   ```bash
+		   ./gradlew build
+		   ```
+		3. Grab the result from `build/libs/Claimo-v<version>.jar` and drop it into
+		   `plugins/`.
+		</Steps>
+	</TabItem>
+</Tabs>
+
+## Optional integrations
+
+| Plugin | Enables |
+| --- | --- |
+| [PlaceholderAPI](https://www.spigotmc.org/resources/placeholderapi.6245/) | `%placeholder%` in commands, the `custom` requirement, and the `claimo` expansion |
+| [Vault](https://www.spigotmc.org/resources/vault.34315/) | The `rank` requirement (permission-group checks) |
+
+<Aside type="tip">
+	Neither is required. Claimo guards every integration behind a plugin-present check, so
+	the jar never links classes that aren't there — nothing breaks if they're absent.
+</Aside>
+
+## What gets created
+
+On first run Claimo writes its data folder:
+
+<FileTree>
+- plugins/Claimo/
+  - config.yml core settings
+  - messages.yml all player-facing text (MiniMessage)
+  - gui.yml the voucher list GUI
+  - vouchers/ one .yml per code — the file name is the code
+    - test.yml
+</FileTree>
+
+Head to the [Quick start](/start/quick-start/) to create your first code.

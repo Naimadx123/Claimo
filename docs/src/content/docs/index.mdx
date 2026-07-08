@@ -1,0 +1,54 @@
+---
+title: Claimo
+description: Voucher / code redemption plugin for PaperMC 1.21.1–26.2 with a pluggable requirement API.
+template: splash
+hero:
+  tagline: Reward codes for PaperMC — redeemable commands, gated behind requirements you can extend.
+  image:
+    file: ../../assets/logo.svg
+  actions:
+    - text: Get started
+      link: /start/introduction/
+      icon: right-arrow
+    - text: View on GitHub
+      link: https://github.com/Naimadx123/Claimo
+      icon: external
+      variant: minimal
+---
+
+import { Card, CardGrid, LinkCard, Badge } from '@astrojs/starlight/components';
+
+## What is Claimo?
+
+Claimo lets players redeem **reward codes** with a configurable command. Each code runs
+one or more server commands and can be gated behind **requirements** — blocks mined,
+playtime, account age, and more. The requirement system is a public API, so addons can
+plug in brand-new checks such as *"follow us on TikTok / YouTube / X / Instagram"*.
+
+<CardGrid stagger>
+	<Card title="Codes that run commands" icon="rocket">
+		Every code dispatches server commands on redeem — give items, grant ranks, run
+		anything. Supports `%player%` and PlaceholderAPI placeholders.
+	</Card>
+	<Card title="Pluggable requirements" icon="puzzle">
+		Gate redemption behind built-in checks or your own. Requirements resolve
+		asynchronously, so social-follow and web-API checks are first-class.
+	</Card>
+	<Card title="In-game creator" icon="pencil">
+		Build and edit codes from a Dialog wizard — no file editing needed on
+		Paper <Badge text="1.21.7+" variant="tip" />.
+	</Card>
+	<Card title="Storage your way" icon="setting">
+		YAML, SQLite, MySQL/MariaDB, PostgreSQL or MongoDB — from zero-setup single
+		server to shared multi-server pools.
+	</Card>
+</CardGrid>
+
+## Where to next
+
+<CardGrid>
+	<LinkCard title="Installation" description="Drop the jar in, start the server." href="/start/installation/" />
+	<LinkCard title="Quick start" description="Create your first working code in minutes." href="/start/quick-start/" />
+	<LinkCard title="Voucher files" description="Every field of a voucher, explained." href="/guides/vouchers/" />
+	<LinkCard title="Developer API" description="Register your own requirement types." href="/api/overview/" />
+</CardGrid>

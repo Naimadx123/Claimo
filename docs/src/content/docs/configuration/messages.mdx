@@ -1,0 +1,60 @@
+---
+title: messages.yml
+description: Every player-facing string, written in MiniMessage with placeholders.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+`messages.yml` holds all player-facing text. Every value is parsed as
+[MiniMessage](https://docs.advntr.dev/minimessage/format.html), so you can use tags like
+`<gray>`, `<white>`, `<red>` and gradients freely.
+
+## Placeholders
+
+These are replaced wherever they appear:
+
+| Placeholder | Meaning |
+| --- | --- |
+| `<command>` | The configured root command. |
+| `<voucher>` | The code being redeemed. |
+| `<type>` | A requirement type key (used in `requirement-unavailable`). |
+| `<description>` | The per-requirement line injected into `requirement-met` / `requirement-unmet`. |
+
+## Defaults
+
+```yaml title="plugins/Claimo/messages.yml"
+prefix: "<gray>[<aqua>Claimo</aqua>]</gray> "
+usage: "<gray>Redeem a reward code with <white>/<command> <code></white>."
+no-such-voucher: "<red>Voucher code <white><voucher></white> was not found."
+players-only: "<red>This command can only be used by a player."
+requirements-not-met: "<red>Requirements for <white><voucher></white>:"
+requirement-met: "<green>✔</green> <gray><description></gray>"
+requirement-unmet: "<red>✖</red> <white><description></white>"
+requirement-unavailable: "Requirement '<type>' is unavailable."
+requirement-error: "Failed to check this requirement."
+requirement-blocks-mined: "Mine blocks: <mined>/<amount>"
+requirement-playtime: "Spend time on the server: <played>/<required>"
+requirement-account-age: "Account age: <current>/<required> days"
+success: "<green>Successfully redeemed the code <white><voucher></white>!"
+reloaded: "<green>Claimo configuration has been reloaded."
+```
+
+## The requirement checklist
+
+When a redeem fails, the whole requirement checklist is printed:
+
+- **Met** lines wrap the requirement's `<description>` in `requirement-met`.
+- **Unmet** lines wrap it in `requirement-unmet`.
+
+<Aside type="tip">
+	The `requirement-blocks-mined`, `requirement-playtime` and `requirement-account-age`
+	strings are the built-in requirements' own `<description>` bodies — they carry their own
+	inner placeholders (e.g. `<mined>/<amount>`) that Claimo fills before the line is wrapped
+	in `requirement-met` / `requirement-unmet`.
+</Aside>
+
+<Aside type="note" title="Custom requirements phrase their own line">
+	Addon requirements supply their `<description>` in code and should phrase it neutrally —
+	e.g. `Follow @Naimadx123 on TikTok` — because the same text is shown whether the check
+	passed or failed. See [Custom requirements](/api/requirements/).
+</Aside>

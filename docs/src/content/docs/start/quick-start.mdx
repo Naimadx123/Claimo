@@ -1,0 +1,102 @@
+---
+title: Quick start
+description: Create, gate, and redeem your first Claimo code in a few minutes.
+---
+
+import { Steps, Tabs, TabItem, Aside, Badge } from '@astrojs/starlight/components';
+
+This walkthrough creates a working code two ways — by hand, and with the in-game
+creator — then redeems it.
+
+## Create your first code
+
+<Tabs>
+	<TabItem label="Edit a file" icon="document">
+		<Steps>
+		1. Create `plugins/Claimo/vouchers/welcome.yml`:
+		   ```yaml title="plugins/Claimo/vouchers/welcome.yml"
+		   # Redeemed with /code welcome
+		   cmd: "give %player% diamond 5"
+		   console: true
+		   ```
+		2. Reload Claimo:
+		   ```text
+		   /code reload
+		   ```
+		3. As a player, redeem it:
+		   ```text
+		   /code welcome
+		   ```
+		</Steps>
+	</TabItem>
+	<TabItem label="In-game creator" icon="pencil">
+		<Badge text="Paper 1.21.7+" variant="tip" />
+		<Steps>
+		1. Run the creator command (needs `claimo.admin`):
+		   ```text
+		   /code create
+		   ```
+		2. On page 1, set the **name** (`welcome`), the **command**
+		   (`give %player% diamond 5`), and leave *run as console* on.
+		3. Use **« Back / Next »** to review requirement pages, then click **Create** on
+		   the last page. Claimo writes `vouchers/welcome.yml` and reloads automatically.
+		</Steps>
+	</TabItem>
+</Tabs>
+
+<Aside type="note">
+	`<command>` defaults to `code`. If you set `command: kod` in `config.yml`, every
+	example here becomes `/kod …` instead. Changing it requires a server restart.
+</Aside>
+
+## Gate it behind a requirement
+
+Want players to earn the reward? Add a `requirements:` block. This code only redeems
+after the player has mined **100 blocks**:
+
+```yaml title="plugins/Claimo/vouchers/welcome.yml" {3-5}
+cmd: "give %player% diamond 5"
+console: true
+requirements:
+  - type: blocks_mined
+    amount: 100
+```
+
+Run `/code reload`. Now a player who hasn't mined enough sees a checklist instead of the
+reward. See [Requirements](/guides/requirements/) for every built-in type.
+
+## Limit how often it's redeemed
+
+Add a `limit:` block to cap redemptions:
+
+```yaml title="One redeem per player"
+limit:
+  mode: per-player
+  amount: 1
+```
+
+```yaml title="A shared pool — first 50 players only"
+limit:
+  mode: global
+  amount: 50
+```
+
+## Open the GUI
+
+Run the bare command with no argument to open a paginated GUI of every visible code —
+players click one to redeem it:
+
+```text
+/code
+```
+
+<Aside type="tip">
+	Vouchers with `hide: true` are excluded from the GUI and tab-completion but stay
+	redeemable by typing the code directly — handy for secret or event codes.
+</Aside>
+
+## Next steps
+
+- [Voucher files](/guides/vouchers/) — every field explained.
+- [Configuration](/configuration/overview/) — sounds, storage, messages and the GUI.
+- [Developer API](/api/overview/) — register your own requirement types.

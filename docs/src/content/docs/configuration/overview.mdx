@@ -1,0 +1,41 @@
+---
+title: Configuration overview
+description: How Claimo's config files are laid out and how to apply changes.
+---
+
+import { FileTree, Aside, LinkCard, CardGrid } from '@astrojs/starlight/components';
+
+Claimo's configuration is split across a few files in the plugin's data folder, each
+created on first run. Edit them, then run `/<command> reload`.
+
+<FileTree>
+- plugins/Claimo/
+  - config.yml core settings — command, sound, logging, storage
+  - messages.yml all player-facing text (MiniMessage)
+  - gui.yml the voucher list GUI
+  - vouchers/ one .yml per code — the file name is the code
+    - test.yml
+</FileTree>
+
+## Applying changes
+
+```text
+/code reload
+```
+
+reloads config and voucher files without a restart.
+
+<Aside type="caution" title="Restart-only keys">
+	A few settings are read once at startup and need a **server restart**, not a reload:
+	- `command:` — the root command name.
+	- `storage.type:` — the storage backend.
+</Aside>
+
+## The files
+
+<CardGrid>
+	<LinkCard title="config.yml" description="Command name, redeem sound, logging, storage." href="/configuration/config/" />
+	<LinkCard title="messages.yml" description="Every player-facing string, in MiniMessage." href="/configuration/messages/" />
+	<LinkCard title="gui.yml" description="The paginated voucher list GUI." href="/configuration/gui/" />
+	<LinkCard title="Storage backends" description="YAML, SQLite, MySQL, PostgreSQL, MongoDB." href="/configuration/storage/" />
+</CardGrid>

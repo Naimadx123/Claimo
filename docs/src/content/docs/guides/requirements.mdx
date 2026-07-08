@@ -1,0 +1,173 @@
+---
+title: Requirements
+description: Gate code redemption behind built-in checks — blocks mined, playtime, ranks and more.
+---
+
+import { Aside, Badge, Card, CardGrid } from '@astrojs/starlight/components';
+
+A voucher's `requirements:` list holds checks that **all** must pass before the code is
+redeemable. When a redeem fails, Claimo prints the whole checklist — met lines and unmet
+lines — so the player knows exactly what's left to do.
+
+```yaml title="vouchers/reward.yml"
+requirements:
+  - type: playtime
+    seconds: 3600
+  - type: account_age
+    days: 7
+```
+
+<Aside type="tip" title="Lazily resolved">
+	Requirements are resolved on **each redeem**, so a type registered by an addon after
+	Claimo already loaded its config still works — the normal case for addons.
+</Aside>
+
+## Built-in types
+
+<CardGrid>
+	<Card title="blocks_mined" icon="seti:default">Blocks the player has broken.</Card>
+	<Card title="playtime" icon="seti:clock">Total time on the server.</Card>
+	<Card title="messages_sent" icon="seti:chat">Qualifying chat messages sent.</Card>
+	<Card title="account_age" icon="seti:calendar">Days since first join.</Card>
+	<Card title="permission" icon="approve-check">Permission nodes held / not held.</Card>
+	<Card title="rank" icon="seti:crystal">Vault permission groups.</Card>
+	<Card title="custom" icon="puzzle">Compare any PlaceholderAPI value.</Card>
+</CardGrid>
+
+### `blocks_mined`
+
+Player has broken at least `amount` blocks — tracked by Claimo, persisting across
+restarts.
+
+| Parameter | Required | Meaning |
+| --- | --- | --- |
+| `amount` | ✅ | Minimum blocks broken. |
+| `whitelist` | optional | Only these material types are counted. |
+| `blacklist` | optional | These material types are never counted. |
+
+```yaml
+- type: blocks_mined
+  amount: 100
+  # Only diamond ore counts toward this one.
+  whitelist:
+    - DIAMOND_ORE
+    - DEEPSLATE_DIAMOND_ORE
+  # blacklist:
+  #   - STONE
+```
+
+Material names are Bukkit constants (e.g. `DIAMOND_ORE`).
+
+<Aside type="note" title="How the counter stays small">
+	Claimo keeps a running **total** of blocks mined per player in their PDC. A
+	**per-material** counter is only kept for materials that appear in *some* voucher's
+	`whitelist`/`blacklist` — every other block just bumps the total. The total is always
+	exact; a material's per-type count begins accruing from when it first appears in the
+	config.
+</Aside>
+
+### `playtime`
+
+Player's total time on the server is at least `seconds` (the vanilla play-time statistic).
+
+```yaml
+- type: playtime
+  seconds: 3600   # one hour
+```
+
+### `messages_sent`
+
+Player has sent at least `amount` **qualifying** chat messages.
+
+| Parameter | Default | Meaning |
+| --- | --- | --- |
+| `amount` | — | Minimum qualifying messages. |
+| `min-length` | `10` | A message must be at least this many characters. |
+| `delay-seconds` | `20` | At least this long must pass since the last counted message. |
+
+```yaml
+- type: messages_sent
+  amount: 25
+  min-length: 10
+  delay-seconds: 20
+```
+
+<Aside type="tip" title="Anti-spam by design">
+	The `min-length` and `delay-seconds` rules stop players farming the requirement with
+	short spam. Each distinct (`min-length`, `delay-seconds`) pair is tracked **separately**,
+	so different vouchers can use different rules without interfering.
+</Aside>
+
+### `account_age`
+
+Player's account first joined the server at least `days` days ago — gates rewards away
+from brand-new accounts and alts.
+
+```yaml
+- type: account_age
+  days: 7
+```
+
+### `permission`
+
+Player must hold **at least one** of `permissions` and **none** of `denied-permissions`.
+
+```yaml
+- type: permission
+  permissions: [claimo.vip, claimo.mvp]   # must have at least one
+  denied-permissions: [claimo.redeemed]   # must have none
+```
+
+- Omit `permissions` for no positive requirement.
+- Use `denied-permissions` to lock a code away from players who already hold a node.
+- Both accept a YAML list **or** a comma-separated string; the singular `permission` /
+  `denied-permission` keys also work.
+
+### `rank`
+
+Same shape as `permission`, but for **permission groups** resolved via **Vault**.
+
+```yaml
+- type: rank
+  denied-ranks: [admin, owner]   # staff can't redeem this one
+```
+
+<Aside type="caution" title="Needs a Vault provider">
+	Requires a Vault provider such as LuckPerms. Without one, a positive `ranks` requirement
+	can't pass. The singular `rank` / `denied-rank` keys also work.
+</Aside>
+
+### `custom`
+
+Resolves a `placeholder` via **PlaceholderAPI** and compares it to `value`. Lets you gate
+on anything PAPI exposes — economy, level, stats — without a dedicated requirement.
+
+| Parameter | Meaning |
+| --- | --- |
+| `placeholder` | A PlaceholderAPI string to resolve for the player. |
+| `operator` | One of `==` `!=` `contains` `regex` `>=` `<=` `>` `<`. |
+| `value` | The value to compare against. |
+
+```yaml
+- type: custom
+  placeholder: "%vault_eco_balance%"
+  operator: ">="
+  value: "1000"
+```
+
+<Aside type="note">
+	Numeric operators (`>= <= > <`) parse both sides as numbers. Needs PlaceholderAPI
+	installed.
+</Aside>
+
+## The redeem checklist
+
+When a redeem fails, the whole requirement checklist is printed. Met lines use the
+`requirement-met` message, unmet lines use `requirement-unmet`, each wrapping the
+requirement's own `<description>`. Customise those in
+[messages.yml](/configuration/messages/).
+
+## Adding your own
+
+None of these fit? Requirement types are a **public API** — register your own (e.g. a
+social-media follow check) from an addon. See [Custom requirements](/api/requirements/).

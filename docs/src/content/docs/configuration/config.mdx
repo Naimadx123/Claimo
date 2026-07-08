@@ -1,0 +1,88 @@
+---
+title: config.yml
+description: Core settings — command name, redeem sound, logging and storage.
+---
+
+import { Aside, Badge } from '@astrojs/starlight/components';
+
+`config.yml` holds Claimo's core settings. Here it is in full, annotated:
+
+```yaml title="plugins/Claimo/config.yml"
+# Command players type to redeem. Set to "kod" for /kod <voucher>.
+# Changing this requires a server restart.
+command: code
+# Open the paginated voucher GUI when the bare command is run with no argument.
+gui-list-enabled: true
+
+# Sound played to the player on a successful redeem.
+# key accepts any sound id, including custom resourcepack sounds (namespace:path).
+# source: master|music|record|weather|block|hostile|neutral|player|ambient|voice
+redeem-sound:
+  enabled: true
+  key: "minecraft:entity.player.levelup"
+  source: master
+  volume: 1.0
+  pitch: 1.0
+
+# Append every successful redeem to plugins/Claimo/logs/redeems.log.
+logging:
+  redeems: true
+
+# Where redemption counts (global pools and per-player usage) are stored.
+storage:
+  type: yaml
+  uri: ""
+  host: localhost
+  port: 3306
+  database: claimo
+  username: root
+  password: ""
+  table-prefix: claimo_
+  pool-size: 10
+```
+
+## Keys
+
+### `command`
+
+<Badge text="restart required" variant="caution" /> The command players type to redeem.
+Defaults to `code`; there's also a permanent `/claimo` alias. See
+[Commands & permissions](/guides/commands/).
+
+### `gui-list-enabled`
+
+When `true` (default), running the bare command with no argument opens the paginated
+[voucher GUI](/configuration/gui/). Set `false` to disable it.
+
+### `redeem-sound`
+
+A sound played to the player on a successful redeem.
+
+| Key | Meaning |
+| --- | --- |
+| `enabled` | Turn the sound on or off. |
+| `key` | Any sound id, including custom resourcepack sounds (`namespace:path`). |
+| `source` | `master`, `music`, `record`, `weather`, `block`, `hostile`, `neutral`, `player`, `ambient` or `voice`. |
+| `volume` | Playback volume. |
+| `pitch` | Playback pitch. |
+
+<Aside type="tip" title="Resourcepack sounds work">
+	Because `key` accepts any raw sound id, a `namespace:path` from your resourcepack plays
+	fine — not just vanilla sounds.
+</Aside>
+
+### `logging.redeems`
+
+When `true`, every successful redeem is appended to
+`plugins/Claimo/logs/redeems.log`.
+
+### `storage`
+
+Where redemption counts — global pools and per-player usage — are persisted. This is a
+big topic with several backends; it has its own page.
+
+<Aside type="caution" title="Restart required">
+	Changing `storage.type` requires a **server restart**.
+</Aside>
+
+→ [Storage backends](/configuration/storage/)
