@@ -19,9 +19,11 @@ class CustomRequirement(
     override fun check(context: RequirementContext): CompletableFuture<RequirementResult> {
         val description = messages.line(
             "requirement-custom",
-            Placeholder.parsed("placeholder", placeholder),
-            Placeholder.parsed("operator", operator),
-            Placeholder.parsed("value", value),
+            Placeholder.unparsed("placeholder", placeholder),
+            Placeholder.unparsed("placeholder_pretty", placeholder.replace("%", "").replace("_", " ").trim()),
+            Placeholder.unparsed("placeholder_parsed", PlaceholderAPI.setPlaceholders(context.player, placeholder)),
+            Placeholder.unparsed("operator", operator),
+            Placeholder.unparsed("value", value),
         )
         val result = if (evaluate(context)) {
             RequirementResult.satisfied(description)
