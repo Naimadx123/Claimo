@@ -6,6 +6,7 @@ import zone.vao.claimo.requirement.Requirement
 import zone.vao.claimo.requirement.RequirementContext
 import zone.vao.claimo.requirement.RequirementResult
 import zone.vao.claimo.stats.StatsService
+import zone.vao.claimo.util.Durations
 import java.util.concurrent.CompletableFuture
 
 class PlaytimeRequirement(
@@ -18,8 +19,8 @@ class PlaytimeRequirement(
         val played = stats.playtimeSeconds(context.player)
         val description = messages.line(
             "requirement-playtime",
-            Placeholder.parsed("played", formatDuration(played)),
-            Placeholder.parsed("required", formatDuration(requiredSeconds)),
+            Placeholder.parsed("played", Durations.humanize(played * 1000L)),
+            Placeholder.parsed("required", Durations.humanize(requiredSeconds * 1000L)),
         )
         val result = if (played >= requiredSeconds) {
             RequirementResult.satisfied(description)
@@ -27,16 +28,5 @@ class PlaytimeRequirement(
             RequirementResult.unsatisfied(description)
         }
         return CompletableFuture.completedFuture(result)
-    }
-
-    private fun formatDuration(seconds: Long): String {
-        val h = seconds / 3600
-        val m = (seconds % 3600) / 60
-        val s = seconds % 60
-        return buildString {
-            if (h > 0) append("${h}h ")
-            if (h > 0 || m > 0) append("${m}m ")
-            append("${s}s")
-        }
     }
 }

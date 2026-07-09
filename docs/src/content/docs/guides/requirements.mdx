@@ -68,11 +68,13 @@ Material names are Bukkit constants (e.g. `DIAMOND_ORE`).
 
 ### `playtime`
 
-Player's total time on the server is at least `seconds` (the vanilla play-time statistic).
+Player's total time on the server is at least `duration` (the vanilla play-time statistic).
+`duration` accepts a friendly string such as `1h 30m`, `5d` or `2w`; a bare number is read as
+seconds. The legacy `seconds` key still works.
 
 ```yaml
 - type: playtime
-  seconds: 3600   # one hour
+  duration: 1h 30m
 ```
 
 ### `messages_sent`
@@ -100,12 +102,13 @@ Player has sent at least `amount` **qualifying** chat messages.
 
 ### `account_age`
 
-Player's account first joined the server at least `days` days ago — gates rewards away
-from brand-new accounts and alts.
+Player's account first joined the server at least `duration` ago — gates rewards away
+from brand-new accounts and alts. `duration` accepts a friendly string such as `7d` or
+`2w`; the legacy `days` number still works.
 
 ```yaml
 - type: account_age
-  days: 7
+  duration: 7d
 ```
 
 ### `permission`

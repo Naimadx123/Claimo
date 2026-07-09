@@ -11,6 +11,7 @@ import zone.vao.claimo.creator.VoucherCreator
 import zone.vao.claimo.gui.VoucherMenu
 import zone.vao.claimo.log.RedeemLog
 import zone.vao.claimo.prompt.CodePrompt
+import zone.vao.claimo.requirement.RequirementConfig
 import zone.vao.claimo.requirement.RequirementInput
 import zone.vao.claimo.requirement.RequirementRegistry
 import zone.vao.claimo.requirement.builtin.AccountAgeRequirement
@@ -26,6 +27,7 @@ import zone.vao.claimo.stats.StatsService
 import zone.vao.claimo.storage.StorageFactory
 import zone.vao.claimo.storage.UsageStorage
 import zone.vao.claimo.usage.UsageService
+import zone.vao.claimo.util.Durations
 import zone.vao.claimo.voucher.Voucher
 import zone.vao.claimo.voucher.VoucherService
 
@@ -141,8 +143,8 @@ class Claimo : JavaPlugin(), ClaimoService {
         )
         requirementRegistry.register(
             "playtime",
-            { cfg -> PlaytimeRequirement(statsService, configManager.config.messages, cfg.getLong("seconds", 0L)) },
-            listOf(RequirementInput.NumberInput("seconds", "Playtime (seconds)", min = 0.0, max = 604_800.0, step = 60.0)),
+            { cfg -> PlaytimeRequirement(statsService, configManager.config.messages, playtimeSeconds(cfg)) },
+            listOf(RequirementInput.TextInput("duration", "Playtime (e.g. 1h 30m)", initial = "1h")),
         )
         requirementRegistry.register(
             "messages_sent",
@@ -162,8 +164,8 @@ class Claimo : JavaPlugin(), ClaimoService {
         )
         requirementRegistry.register(
             "account_age",
-            { cfg -> AccountAgeRequirement(configManager.config.messages, cfg.getLong("days", 0L)) },
-            listOf(RequirementInput.NumberInput("days", "Account age (days)", min = 0.0, max = 365.0, step = 1.0)),
+            { cfg -> AccountAgeRequirement(configManager.config.messages, accountAgeMillis(cfg)) },
+            listOf(RequirementInput.TextInput("duration", "Account age (e.g. 7d, 2w)", initial = "7d")),
         )
         requirementRegistry.register(
             "permission",
@@ -209,6 +211,18 @@ class Claimo : JavaPlugin(), ClaimoService {
                 RequirementInput.TextInput("value", "Value to compare against"),
             ),
         )
+    }
+
+    private fun playtimeSeconds(cfg: RequirementConfig): Long {
+        val duration = cfg.getString("duration")?.trim().orEmpty()
+        if (duration.isNotEmpty()) Durations.parseMillis(duration)?.let { return it / 1000L }
+        return cfg.getLong("seconds", 0L)
+    }
+
+    private fun accountAgeMillis(cfg: RequirementConfig): Long {
+        val duration = cfg.getString("duration")?.trim().orEmpty()
+        if (duration.isNotEmpty()) Durations.parseMillis(duration)?.let { return it }
+        return cfg.getLong("days", 0L) * 86_400_000L
     }
 
     private fun parseMaterials(names: List<String>): Set<Material> =
