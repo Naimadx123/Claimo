@@ -114,7 +114,7 @@ class DialogVoucherCreator(private val plugin: Claimo) : VoucherCreator, Listene
         }
         if (key == DELETE_OK) {
             val id = pendingDelete.remove(player.uniqueId) ?: return
-            plugin.server.globalRegionScheduler.run(plugin) { _ -> finishDelete(player, id) }
+            player.scheduler.run(plugin, { finishDelete(player, id) }, null)
             return
         }
 
@@ -123,7 +123,7 @@ class DialogVoucherCreator(private val plugin: Claimo) : VoucherCreator, Listene
         when (key) {
             NEXT -> reopen(player, draft, draft.page + 1)
             BACK -> reopen(player, draft, draft.page - 1)
-            CREATE -> plugin.server.globalRegionScheduler.run(plugin) { _ -> finalize(player, draft) }
+            CREATE -> player.scheduler.run(plugin, { finalize(player, draft) }, null)
         }
     }
 

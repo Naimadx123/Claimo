@@ -1,6 +1,7 @@
 name: Claimo
 version: '${version}'
 
+folia-supported: true
 main: zone.vao.claimo.Claimo
 api-version: '1.21'
 load: POSTWORLD
