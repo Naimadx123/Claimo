@@ -160,6 +160,27 @@ on anything PAPI exposes — economy, level, stats — without a dedicated requi
 	installed.
 </Aside>
 
+Its `requirement-custom` message (in `messages.yml`) can use these placeholders, so you
+can phrase the checklist line however you like:
+
+| Placeholder | Value |
+| --- | --- |
+| `<placeholder>` | The raw placeholder string as configured, e.g. `%vault_eco_balance%`. |
+| `<placeholder_pretty>` | The placeholder with `%` stripped and `_` turned into spaces, e.g. `vault eco balance`. |
+| `<placeholder_parsed>` | The placeholder resolved to the player's current value. |
+| `<operator>` | The configured operator. |
+| `<value>` | The value being compared against. |
+
+```yaml title="messages.yml"
+requirement-custom: "<placeholder_pretty>: <placeholder_parsed> (need <operator> <value>)"
+```
+
+<Aside type="caution" title="Operators in YAML and MiniMessage">
+	`>` on its own is a YAML block indicator, so quote it: `operator: ">"`. In the message,
+	insert the operator with `<operator>`; Claimo inserts it literally, so `<` and `>` show
+	up correctly instead of being read as MiniMessage tags.
+</Aside>
+
 ## The redeem checklist
 
 When a redeem fails, the whole requirement checklist is printed. Met lines use the
