@@ -35,7 +35,8 @@ class CustomRequirement(
         if (placeholder.isBlank()) return false
         if (!Bukkit.getPluginManager().isPluginEnabled("PlaceholderAPI")) return false
         val actual = PlaceholderAPI.setPlaceholders(context.player, placeholder).trim()
-        return compare(actual, value.trim(), operator.trim().lowercase())
+        val valueParsed = PlaceholderAPI.setPlaceholders(context.player, this.value).trim()
+        return compare(actual, valueParsed, operator.trim().lowercase())
     }
 
     private fun compare(actual: String, expected: String, op: String): Boolean = when (op) {
