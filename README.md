@@ -30,7 +30,8 @@ the same content is not duplicated in two places.
 
 - Paper 1.21.1+ and compatible forks. Folia is supported (same jar).
 - Optional soft dependencies: PlaceholderAPI (command placeholders, the `custom` requirement,
-  and the `claimo` placeholder expansion) and Vault (the `rank` requirement).
+  and the `claimo` placeholder expansion), MiniPlaceholders (the same `claimo` placeholders as
+  MiniMessage tags) and Vault (the `rank` requirement).
 - The in-game dialog creator needs 1.21.7+. On 1.21.1 to 1.21.6 everything else works and you
   author codes in the `vouchers/` files.
 

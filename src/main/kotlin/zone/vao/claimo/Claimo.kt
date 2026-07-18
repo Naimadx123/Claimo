@@ -85,6 +85,7 @@ class Claimo : JavaPlugin(), ClaimoService {
         server.pluginManager.registerEvents(redeemLog, this)
 
         registerPlaceholders()
+        registerMiniPlaceholders()
 
         ClaimoApi.init(this)
 
@@ -125,6 +126,16 @@ class Claimo : JavaPlugin(), ClaimoService {
                 .newInstance(this)
             expansion.javaClass.getMethod("register").invoke(expansion)
         }.onFailure { logger.warning("Failed to register the PlaceholderAPI expansion: ${it.message}") }
+    }
+
+    private fun registerMiniPlaceholders() {
+        if (!server.pluginManager.isPluginEnabled("MiniPlaceholders")) return
+        runCatching {
+            val expansion = Class.forName("zone.vao.claimo.hook.ClaimoMiniExpansion")
+                .getConstructor(Claimo::class.java)
+                .newInstance(this)
+            expansion.javaClass.getMethod("register").invoke(expansion)
+        }.onFailure { logger.warning("Failed to register the MiniPlaceholders expansion: ${it.message}") }
     }
 
     private fun registerBuiltinRequirements() {
