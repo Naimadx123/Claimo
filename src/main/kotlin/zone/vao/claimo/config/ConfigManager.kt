@@ -47,6 +47,8 @@ class ConfigManager(private val plugin: JavaPlugin) {
             messages = parseMessages(messages),
             gui = parseGui(gui),
             vouchers = loadVouchers(),
+            placeholderTrue = main.getString("placeholders.true-value") ?: "true",
+            placeholderFalse = main.getString("placeholders.false-value") ?: "false",
         )
     }
 

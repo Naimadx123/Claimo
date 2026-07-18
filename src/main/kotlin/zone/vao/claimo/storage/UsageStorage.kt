@@ -12,5 +12,7 @@ interface UsageStorage {
 
     fun savePlayer(uuid: UUID, voucherId: String, uses: Int)
 
+    fun deleteVoucher(voucherId: String)
+
     fun close()
 }

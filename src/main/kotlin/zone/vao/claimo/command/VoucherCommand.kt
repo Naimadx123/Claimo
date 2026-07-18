@@ -42,6 +42,16 @@ object VoucherCommand {
                     }
             )
             .then(
+                Commands.literal("purge")
+                    .requires { it.sender.hasPermission("claimo.admin") }
+                    .executes { ctx ->
+                        val messages = plugin.configManager.config.messages
+                        val purged = plugin.usageService.purgeExcept(plugin.configManager.config.vouchers.keys)
+                        messages.send(ctx.source.sender, "purged", Placeholder.parsed("amount", purged.toString()))
+                        Command.SINGLE_SUCCESS
+                    }
+            )
+            .then(
                 Commands.literal("create")
                     .requires { it.sender.hasPermission("claimo.admin") }
                     .executes { ctx ->

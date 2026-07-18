@@ -87,6 +87,17 @@ class SqlUsageStorage(hikariConfig: HikariConfig, tablePrefix: String) : UsageSt
         }
     }
 
+    override fun deleteVoucher(voucherId: String) {
+        dataSource.connection.use { conn ->
+            for (table in arrayOf(globalTable, playerTable)) {
+                conn.prepareStatement("DELETE FROM $table WHERE voucher_id = ?").use { ps ->
+                    ps.setString(1, voucherId)
+                    ps.executeUpdate()
+                }
+            }
+        }
+    }
+
     override fun close() {
         dataSource.close()
     }

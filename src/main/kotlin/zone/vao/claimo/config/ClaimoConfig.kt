@@ -13,4 +13,6 @@ data class ClaimoConfig(
     val messages: Messages,
     val gui: GuiConfig,
     val vouchers: Map<String, Voucher>,
+    val placeholderTrue: String = "true",
+    val placeholderFalse: String = "false",
 )

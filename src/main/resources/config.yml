@@ -2,6 +2,13 @@ command: code
 dialog_code_input: codeinput # comment this line if you don't want dialog input code
 gui-list-enabled: true
 
+# Text returned by the boolean placeholders (redeemed, can_redeem, expired) in both
+# PlaceholderAPI and MiniPlaceholders. Use it to show custom messages instead of true/false.
+# <voucher> is replaced with the code id, e.g. true-value: "You already redeemed <voucher>!".
+placeholders:
+  true-value: "true"
+  false-value: "false"
+
 redeem-sound:
   enabled: true
   key: "minecraft:entity.player.levelup" # any sound key, incl. custom resourcepack sounds

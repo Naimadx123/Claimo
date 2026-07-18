@@ -18,13 +18,14 @@ the GUI, and admin management — hangs off it.
 | `/<command> edit <voucher>` | Edit an existing code in the dialog wizard <Badge text="1.21.7+" variant="tip" /> | `claimo.admin` |
 | `/<command> delete <voucher>` | Delete a code (with a confirm dialog) <Badge text="1.21.7+" variant="tip" /> | `claimo.admin` |
 | `/<command> reload` | Reload config and voucher files | `claimo.admin` |
+| `/<command> purge` | Drop stored usage for codes whose config was deleted | `claimo.admin` |
 
 ## Permissions
 
 | Node | Grants | Default |
 | --- | --- | --- |
 | `claimo.use` | Redeem codes and open the GUI | everyone |
-| `claimo.admin` | Create, edit, delete and reload | op |
+| `claimo.admin` | Create, edit, delete, reload and purge | op |
 
 ## The command name
 
@@ -48,6 +49,9 @@ command: kod
   codes; clicking one redeems it. (Set `gui-list-enabled: false` to disable.)
 - Vouchers with `hide: true` are excluded from both the GUI and tab-completion — they
   stay redeemable by typing the exact code.
+- `/<command> purge` removes stored redemption counts (global and per-player) for every code
+  that no longer has a config file. Deleting a code alone leaves its history in the database;
+  purge is the explicit, one-off cleanup, and it lets a re-created code start fresh.
 
 <Aside type="tip">
 	From the console, the bare command prints usage instead of opening a GUI (there's no

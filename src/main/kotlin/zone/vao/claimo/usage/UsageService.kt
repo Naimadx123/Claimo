@@ -54,6 +54,19 @@ class UsageService(
         }
     }
 
+    fun purgeExcept(validIds: Set<String>): Int {
+        val valid = validIds.mapTo(HashSet()) { it.lowercase() }
+        val known = global.keys + players.values.flatMap { it.keys }
+        val orphaned = known.filterNot { it.lowercase() in valid }.toSet()
+        if (orphaned.isEmpty()) return 0
+        for (id in orphaned) {
+            global.remove(id)
+            players.values.forEach { it.remove(id) }
+        }
+        io.execute { orphaned.forEach { storage.deleteVoucher(it) } }
+        return orphaned.size
+    }
+
     fun shutdown() {
         io.shutdown()
         runCatching { io.awaitTermination(5, TimeUnit.SECONDS) }

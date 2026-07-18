@@ -46,6 +46,21 @@ Show a player how many times they can still redeem the `welcome` code on a score
 Welcome reward: %claimo_remaining_welcome% left
 ```
 
+<Aside type="tip" title="Custom true/false text">
+	The boolean placeholders (`redeemed`, `can_redeem`, `expired`) return `true`/`false` by
+	default, but you can change that text — e.g. to `You already redeemed <voucher>!` — via
+	`placeholders.true-value` / `placeholders.false-value` in
+	[`config.yml`](/configuration/config/#placeholders). The `<voucher>` token is replaced with
+	the code id, and it applies to both PlaceholderAPI and MiniPlaceholders.
+</Aside>
+
+<Aside type="note" title="Deleted codes keep their history until purged">
+	Deleting a code's config does **not** immediately wipe its remembered redemptions from the
+	database. Run `/code purge` (needs `claimo.admin`) to drop stored usage for every code that no
+	longer has a config file. After purging, a code re-created with the same name starts fresh —
+	`%claimo_redeemed_<id>%` reports `false` again until it's redeemed anew.
+</Aside>
+
 <Aside type="note">
 	The expansion is registered at startup only when PlaceholderAPI is enabled, so its
 	classes are never linked on servers that don't have it.
