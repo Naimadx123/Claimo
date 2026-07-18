@@ -14,6 +14,12 @@ command: code
 # Open the paginated voucher GUI when the bare command is run with no argument.
 gui-list-enabled: true
 
+# Text the boolean placeholders (redeemed, can_redeem, expired) return, in both
+# PlaceholderAPI and MiniPlaceholders. Set custom messages instead of true/false.
+placeholders:
+  true-value: "true"
+  false-value: "false"
+
 # Sound played to the player on a successful redeem.
 # key accepts any sound id, including custom resourcepack sounds (namespace:path).
 # source: master|music|record|weather|block|hostile|neutral|player|ambient|voice
@@ -53,6 +59,23 @@ Defaults to `code`; there's also a permanent `/claimo` alias. See
 
 When `true` (default), running the bare command with no argument opens the paginated
 [voucher GUI](/configuration/gui/). Set `false` to disable it.
+
+### `placeholders`
+
+The text the boolean placeholders — `redeemed`, `can_redeem` and `expired` — return, in both
+[PlaceholderAPI and MiniPlaceholders](/integrations/placeholderapi/). Use it to show a friendly
+message instead of `true`/`false`. The token `<voucher>` is replaced with the code id.
+
+| Key | Meaning |
+| --- | --- |
+| `true-value` | Returned when the check is true (default `true`). |
+| `false-value` | Returned when the check is false (default `false`). |
+
+```yaml
+placeholders:
+  true-value: "You already redeemed <voucher>!"
+  false-value: "&cNot claimed"
+```
 
 ### `redeem-sound`
 

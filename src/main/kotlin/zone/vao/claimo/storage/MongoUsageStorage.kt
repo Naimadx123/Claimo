@@ -63,6 +63,11 @@ class MongoUsageStorage(
         )
     }
 
+    override fun deleteVoucher(voucherId: String) {
+        global.deleteOne(Filters.eq("_id", voucherId))
+        players.deleteMany(Filters.eq("voucher_id", voucherId))
+    }
+
     override fun close() {
         client.close()
     }

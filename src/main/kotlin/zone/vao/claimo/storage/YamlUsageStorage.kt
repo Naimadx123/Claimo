@@ -33,6 +33,13 @@ class YamlUsageStorage(private val file: File) : UsageStorage {
         persist()
     }
 
+    override fun deleteVoucher(voucherId: String): Unit = synchronized(lock) {
+        yaml.set("global.$voucherId", null)
+        val players = yaml.getConfigurationSection("players")
+        players?.getKeys(false)?.forEach { uuid -> yaml.set("players.$uuid.$voucherId", null) }
+        persist()
+    }
+
     override fun close(): Unit = synchronized(lock) {
         persist()
     }
