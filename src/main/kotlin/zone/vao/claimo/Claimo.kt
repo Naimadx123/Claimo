@@ -273,15 +273,29 @@ class Claimo : JavaPlugin(), ClaimoService {
         val commandName = configManager.config.commandName
         val dialogCommandName = configManager.config.dialogCommandName
         lifecycleManager.registerEventHandler(LifecycleEvents.COMMANDS) { event ->
-            event.registrar().register(
+            val registrar = event.registrar()
+            registrar.register(
                 VoucherCommand.build(this, commandName),
                 "Redeem Claimo voucher codes",
                 listOf("claimo"),
             )
             if (dialogCommandName != null) {
-                event.registrar().register(
+                registrar.register(
                     VoucherCommand.buildDialogInput(this, dialogCommandName),
                     "Redeem a Claimo voucher code via a dialog",
+                )
+            }
+            val reserved = mutableSetOf("claimo", commandName.lowercase())
+            dialogCommandName?.let { reserved += it.lowercase() }
+            for (voucher in configManager.config.vouchers.values) {
+                val cmd = voucher.redeemCommand ?: continue
+                if (!reserved.add(cmd.lowercase())) {
+                    logger.warning("Voucher '${voucher.id}' redeem-command '/$cmd' clashes with another Claimo command; skipping it.")
+                    continue
+                }
+                registrar.register(
+                    VoucherCommand.buildRedeemCommand(this, cmd, voucher.id),
+                    "Redeem the Claimo code '${voucher.id}'",
                 )
             }
         }

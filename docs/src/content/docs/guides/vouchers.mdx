@@ -18,6 +18,9 @@ Each file in `plugins/Claimo/vouchers/` defines one voucher. The **file name** (
 # %player% is replaced with the player's name. If PlaceholderAPI is installed,
 # any other %placeholder% (e.g. %player_uuid%, %vault_eco_balance%) is resolved too.
 cmd: "lp user %player% parent addtemp vip 7d"
+# Optional standalone command to redeem this code, e.g. /testget (same as /code test).
+# Registered on server (re)start. Omit for none.
+redeem-command: testget
 # Run as console (true) or as the player (false). Default: true.
 console: true
 # Hide from the GUI and tab-completion (still redeemable by code). Default: false.
@@ -77,6 +80,26 @@ console: false   # runs as the player, with their permissions
 <Badge text="default: false" variant="note" /> — when `true`, the code is excluded from
 the GUI and tab-completion but stays redeemable by typing it exactly. Ideal for secret or
 event codes.
+
+### `redeem-command` — a shortcut command
+
+Optional. Registers a standalone command that redeems this code directly, so players can run
+`/testget` instead of `/code test`. A leading `/` is optional; only the first word is used.
+
+```yaml
+redeem-command: testget
+```
+
+The command behaves exactly like `/code <name>` — same permission (`claimo.use`), requirements,
+limits and messages.
+
+<Aside type="caution" title="Takes effect on (re)start">
+	Standalone commands are registered while the server builds its command tree, so a new or
+	changed `redeem-command` only becomes active after a **server restart** (or a full
+	`/reload`) — `/code reload` alone won't register it. A command that clashes with another
+	Claimo command (the main command, the dialog command, `claimo`, or another voucher's) is
+	skipped with a console warning.
+</Aside>
 
 ### `expires` — a time limit
 

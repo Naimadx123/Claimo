@@ -1,4 +1,6 @@
 cmd: "lp user %player% parent addtemp vip 7d"
+# Optional: redeem this code with /testget instead of /code test (registered on restart).
+# redeem-command: testget
 console: true
 hide: false
 requirements:

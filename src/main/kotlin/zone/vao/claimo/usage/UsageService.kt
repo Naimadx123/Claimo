@@ -46,20 +46,11 @@ class UsageService(
 
     fun record(player: Player, voucher: Voucher) {
         val uuid = player.uniqueId
-        when (voucher.limitMode) {
-            LimitMode.NONE -> return
-            LimitMode.GLOBAL -> {
-                val globalCount = global.merge(voucher.id, 1, Int::plus) ?: 1
-                val playerCount = incrementPlayer(uuid, voucher.id)
-                io.execute {
-                    storage.saveGlobal(voucher.id, globalCount)
-                    storage.savePlayer(uuid, voucher.id, playerCount)
-                }
-            }
-            LimitMode.PER_PLAYER -> {
-                val playerCount = incrementPlayer(uuid, voucher.id)
-                io.execute { storage.savePlayer(uuid, voucher.id, playerCount) }
-            }
+        val globalCount = global.merge(voucher.id, 1, Int::plus) ?: 1
+        val playerCount = incrementPlayer(uuid, voucher.id)
+        io.execute {
+            storage.saveGlobal(voucher.id, globalCount)
+            storage.savePlayer(uuid, voucher.id, playerCount)
         }
     }
 

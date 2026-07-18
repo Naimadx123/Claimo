@@ -27,6 +27,7 @@ class ClaimoExpansion(private val plugin: Claimo) : PlaceholderExpansion() {
         return when (prefix) {
             "uses" -> plugin.usageService.globalUses(voucher.id).toString()
             "player_uses" -> (online?.let { plugin.usageService.playerUses(it, voucher.id) } ?: 0).toString()
+            "redeemed" -> (online != null && plugin.usageService.playerUses(online, voucher.id) > 0).toString()
             "limit" -> if (voucher.limitMode == LimitMode.NONE) "unlimited" else voucher.limitAmount.toString()
             "remaining" -> remaining(voucher, player)
             "expired" -> voucher.isExpired().toString()
@@ -61,6 +62,6 @@ class ClaimoExpansion(private val plugin: Claimo) : PlaceholderExpansion() {
     }
 
     private companion object {
-        val PREFIXES = listOf("player_uses", "uses", "remaining", "limit", "can_redeem", "expired")
+        val PREFIXES = listOf("player_uses", "uses", "remaining", "limit", "can_redeem", "redeemed", "expired")
     }
 }
