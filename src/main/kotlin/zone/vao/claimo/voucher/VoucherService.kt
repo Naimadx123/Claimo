@@ -51,33 +51,40 @@ class VoucherService(private val plugin: Claimo) {
         }
 
         CompletableFuture.allOf(*checks.toTypedArray()).whenComplete { _, _ ->
-            plugin.server.globalRegionScheduler.run(plugin) { _ ->
-                if (!player.isOnline) return@run
-
-                if (plugin.usageService.isExhausted(player, voucher)) {
-                    sendLimitMessage(player, voucher)
-                    return@run
-                }
-
-                val results = checks.map { it.join() }
-                if (results.any { !it.satisfied }) {
-                    messages.send(player, "requirements-not-met", Placeholder.parsed("voucher", voucherId))
-                    results.forEach { result ->
-                        val key = if (result.satisfied) "requirement-met" else "requirement-unmet"
-                        player.sendMessage(messages.line(key, Placeholder.component("description", result.description)))
-                    }
-                    return@run
-                }
-
-                if (!PlayerRedeemVoucherEvent(player, voucher).callEvent()) return@run
-
-                execute(player, voucher)
-                plugin.usageService.record(player, voucher)
-                config.redeemSound.sound?.let(player::playSound)
-                VoucherRedeemedEvent(player, voucher).callEvent()
-                messages.send(player, "success", Placeholder.parsed("voucher", voucherId))
-            }
+            player.scheduler.run(plugin, { completeRedeem(player, voucher, checks) }, null)
         }
+    }
+
+    private fun completeRedeem(
+        player: Player,
+        voucher: Voucher,
+        checks: List<CompletableFuture<RequirementResult>>,
+    ) {
+        if (!player.isOnline) return
+        val messages = plugin.configManager.config.messages
+
+        if (plugin.usageService.isExhausted(player, voucher)) {
+            sendLimitMessage(player, voucher)
+            return
+        }
+
+        val results = checks.map { it.join() }
+        if (results.any { !it.satisfied }) {
+            messages.send(player, "requirements-not-met", Placeholder.parsed("voucher", voucher.id))
+            results.forEach { result ->
+                val key = if (result.satisfied) "requirement-met" else "requirement-unmet"
+                player.sendMessage(messages.line(key, Placeholder.component("description", result.description)))
+            }
+            return
+        }
+
+        if (!PlayerRedeemVoucherEvent(player, voucher).callEvent()) return
+
+        execute(player, voucher)
+        plugin.usageService.record(player, voucher)
+        plugin.configManager.config.redeemSound.sound?.let(player::playSound)
+        VoucherRedeemedEvent(player, voucher).callEvent()
+        messages.send(player, "success", Placeholder.parsed("voucher", voucher.id))
     }
 
     private fun sendLimitMessage(player: Player, voucher: Voucher) {

@@ -203,8 +203,13 @@ class ConfigManager(private val plugin: JavaPlugin) {
             limitAmount = (limit?.getInt("amount", 1) ?: 1).coerceAtLeast(1),
             requirements = parseRequirements(id, section.getMapList("requirements")),
             expiresAt = parseExpiry(id, section, defaultCreatedAt),
+            redeemCommand = parseRedeemCommand(section.getString("redeem-command")),
         )
     }
+
+    /** Reads a per-voucher redeem command: strips a leading `/`, trims, and keeps only the first token. */
+    private fun parseRedeemCommand(raw: String?): String? =
+        raw?.removePrefix("/")?.trim()?.substringBefore(' ')?.ifEmpty { null }
 
     private fun parseExpiry(id: String, section: ConfigurationSection, defaultCreatedAt: Long): Long? {
         val raw = section.getString("expires")?.trim().orEmpty()

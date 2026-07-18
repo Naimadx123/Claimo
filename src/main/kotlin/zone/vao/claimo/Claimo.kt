@@ -11,6 +11,7 @@ import zone.vao.claimo.creator.VoucherCreator
 import zone.vao.claimo.gui.VoucherMenu
 import zone.vao.claimo.log.RedeemLog
 import zone.vao.claimo.prompt.CodePrompt
+import zone.vao.claimo.requirement.RequirementConfig
 import zone.vao.claimo.requirement.RequirementInput
 import zone.vao.claimo.requirement.RequirementRegistry
 import zone.vao.claimo.requirement.builtin.AccountAgeRequirement
@@ -26,6 +27,7 @@ import zone.vao.claimo.stats.StatsService
 import zone.vao.claimo.storage.StorageFactory
 import zone.vao.claimo.storage.UsageStorage
 import zone.vao.claimo.usage.UsageService
+import zone.vao.claimo.util.Durations
 import zone.vao.claimo.voucher.Voucher
 import zone.vao.claimo.voucher.VoucherService
 
@@ -83,6 +85,7 @@ class Claimo : JavaPlugin(), ClaimoService {
         server.pluginManager.registerEvents(redeemLog, this)
 
         registerPlaceholders()
+        registerMiniPlaceholders()
 
         ClaimoApi.init(this)
 
@@ -125,6 +128,16 @@ class Claimo : JavaPlugin(), ClaimoService {
         }.onFailure { logger.warning("Failed to register the PlaceholderAPI expansion: ${it.message}") }
     }
 
+    private fun registerMiniPlaceholders() {
+        if (!server.pluginManager.isPluginEnabled("MiniPlaceholders")) return
+        runCatching {
+            val expansion = Class.forName("zone.vao.claimo.hook.ClaimoMiniExpansion")
+                .getConstructor(Claimo::class.java)
+                .newInstance(this)
+            expansion.javaClass.getMethod("register").invoke(expansion)
+        }.onFailure { logger.warning("Failed to register the MiniPlaceholders expansion: ${it.message}") }
+    }
+
     private fun registerBuiltinRequirements() {
         requirementRegistry.register(
             "blocks_mined",
@@ -141,8 +154,8 @@ class Claimo : JavaPlugin(), ClaimoService {
         )
         requirementRegistry.register(
             "playtime",
-            { cfg -> PlaytimeRequirement(statsService, configManager.config.messages, cfg.getLong("seconds", 0L)) },
-            listOf(RequirementInput.NumberInput("seconds", "Playtime (seconds)", min = 0.0, max = 604_800.0, step = 60.0)),
+            { cfg -> PlaytimeRequirement(statsService, configManager.config.messages, playtimeSeconds(cfg)) },
+            listOf(RequirementInput.TextInput("duration", "Playtime (e.g. 1h 30m)", initial = "1h")),
         )
         requirementRegistry.register(
             "messages_sent",
@@ -162,8 +175,8 @@ class Claimo : JavaPlugin(), ClaimoService {
         )
         requirementRegistry.register(
             "account_age",
-            { cfg -> AccountAgeRequirement(configManager.config.messages, cfg.getLong("days", 0L)) },
-            listOf(RequirementInput.NumberInput("days", "Account age (days)", min = 0.0, max = 365.0, step = 1.0)),
+            { cfg -> AccountAgeRequirement(configManager.config.messages, accountAgeMillis(cfg)) },
+            listOf(RequirementInput.TextInput("duration", "Account age (e.g. 7d, 2w)", initial = "7d")),
         )
         requirementRegistry.register(
             "permission",
@@ -209,6 +222,18 @@ class Claimo : JavaPlugin(), ClaimoService {
                 RequirementInput.TextInput("value", "Value to compare against"),
             ),
         )
+    }
+
+    private fun playtimeSeconds(cfg: RequirementConfig): Long {
+        val duration = cfg.getString("duration")?.trim().orEmpty()
+        if (duration.isNotEmpty()) Durations.parseMillis(duration)?.let { return it / 1000L }
+        return cfg.getLong("seconds", 0L)
+    }
+
+    private fun accountAgeMillis(cfg: RequirementConfig): Long {
+        val duration = cfg.getString("duration")?.trim().orEmpty()
+        if (duration.isNotEmpty()) Durations.parseMillis(duration)?.let { return it }
+        return cfg.getLong("days", 0L) * 86_400_000L
     }
 
     private fun parseMaterials(names: List<String>): Set<Material> =
@@ -259,15 +284,29 @@ class Claimo : JavaPlugin(), ClaimoService {
         val commandName = configManager.config.commandName
         val dialogCommandName = configManager.config.dialogCommandName
         lifecycleManager.registerEventHandler(LifecycleEvents.COMMANDS) { event ->
-            event.registrar().register(
+            val registrar = event.registrar()
+            registrar.register(
                 VoucherCommand.build(this, commandName),
                 "Redeem Claimo voucher codes",
                 listOf("claimo"),
             )
             if (dialogCommandName != null) {
-                event.registrar().register(
+                registrar.register(
                     VoucherCommand.buildDialogInput(this, dialogCommandName),
                     "Redeem a Claimo voucher code via a dialog",
+                )
+            }
+            val reserved = mutableSetOf("claimo", commandName.lowercase())
+            dialogCommandName?.let { reserved += it.lowercase() }
+            for (voucher in configManager.config.vouchers.values) {
+                val cmd = voucher.redeemCommand ?: continue
+                if (!reserved.add(cmd.lowercase())) {
+                    logger.warning("Voucher '${voucher.id}' redeem-command '/$cmd' clashes with another Claimo command; skipping it.")
+                    continue
+                }
+                registrar.register(
+                    VoucherCommand.buildRedeemCommand(this, cmd, voucher.id),
+                    "Redeem the Claimo code '${voucher.id}'",
                 )
             }
         }

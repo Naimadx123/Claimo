@@ -115,6 +115,21 @@ object VoucherCommand {
             )
             .build()
 
+    /** A standalone command that redeems [voucherId] directly, like `/<command> <voucherId>`. */
+    fun buildRedeemCommand(plugin: Claimo, commandName: String, voucherId: String): LiteralCommandNode<CommandSourceStack> =
+        Commands.literal(commandName)
+            .executes { ctx ->
+                val sender = ctx.source.sender
+                val messages = plugin.configManager.config.messages
+                when {
+                    !sender.hasPermission("claimo.use") -> messages.send(sender, "no-permission")
+                    sender !is Player -> messages.send(sender, "players-only")
+                    else -> plugin.voucherService.redeem(sender, voucherId)
+                }
+                Command.SINGLE_SUCCESS
+            }
+            .build()
+
     fun buildDialogInput(plugin: Claimo, commandName: String): LiteralCommandNode<CommandSourceStack> =
         Commands.literal(commandName)
             .executes { ctx ->

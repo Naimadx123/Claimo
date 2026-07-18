@@ -33,6 +33,14 @@ jobs:
           chmod +x ./gradlew
           ./gradlew clean build -Pversion=${{ steps.version.outputs.version }} --stacktrace
 
+      - name: Upload snapshot artifact
+        if: ${{ endsWith(steps.version.outputs.version, '-SNAPSHOT') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: Claimo-v${{ steps.version.outputs.version }}
+          path: build/libs/Claimo-v${{ steps.version.outputs.version }}.jar
+          if-no-files-found: error
+
       - name: Create release
         if: ${{ !endsWith(steps.version.outputs.version, '-SNAPSHOT') }}
         uses: softprops/action-gh-release@v2

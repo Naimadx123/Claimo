@@ -5,34 +5,27 @@ import zone.vao.claimo.config.Messages
 import zone.vao.claimo.requirement.Requirement
 import zone.vao.claimo.requirement.RequirementContext
 import zone.vao.claimo.requirement.RequirementResult
+import zone.vao.claimo.util.Durations
 import java.util.concurrent.CompletableFuture
 
 class AccountAgeRequirement(
     private val messages: Messages,
-    private val requiredDays: Long,
+    private val requiredMillis: Long,
 ) : Requirement {
 
     override fun check(context: RequirementContext): CompletableFuture<RequirementResult> {
         val firstPlayed = context.player.firstPlayed
-        val daysPlayed = if (firstPlayed > 0L) {
-            (System.currentTimeMillis() - firstPlayed) / MILLIS_PER_DAY
-        } else {
-            0L
-        }
+        val ageMillis = if (firstPlayed > 0L) System.currentTimeMillis() - firstPlayed else 0L
         val description = messages.line(
             "requirement-account-age",
-            Placeholder.parsed("current", daysPlayed.toString()),
-            Placeholder.parsed("required", requiredDays.toString()),
+            Placeholder.parsed("current", Durations.humanize(ageMillis)),
+            Placeholder.parsed("required", Durations.humanize(requiredMillis)),
         )
-        val result = if (daysPlayed >= requiredDays) {
+        val result = if (ageMillis >= requiredMillis) {
             RequirementResult.satisfied(description)
         } else {
             RequirementResult.unsatisfied(description)
         }
         return CompletableFuture.completedFuture(result)
-    }
-
-    private companion object {
-        const val MILLIS_PER_DAY: Long = 24L * 60L * 60L * 1000L
     }
 }

@@ -19,6 +19,7 @@ dependencies {
     implementation(project(":api"))
     compileOnly("io.papermc.paper:paper-api:1.21.8-R0.1-SNAPSHOT")
     compileOnly("me.clip:placeholderapi:2.11.6")
+    compileOnly("io.github.miniplaceholders:miniplaceholders-api:3.0.1")
     compileOnly("com.github.MilkBowl:VaultAPI:1.7.1")
     compileOnly("com.zaxxer:HikariCP:$hikariVersion")
     compileOnly("org.mongodb:mongodb-driver-sync:$mongoVersion")

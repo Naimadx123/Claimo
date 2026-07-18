@@ -30,9 +30,7 @@ class DialogCodePrompt(private val plugin: Claimo) : CodePrompt, Listener {
         val player = connection.player
         val code = event.dialogResponseView?.getText("code")?.trim().orEmpty()
         if (code.isEmpty()) return
-        plugin.server.globalRegionScheduler.run(plugin) { _ ->
-            if (player.isOnline) plugin.voucherService.redeem(player, code)
-        }
+        player.scheduler.run(plugin, { if (player.isOnline) plugin.voucherService.redeem(player, code) }, null)
     }
 
     private fun build(): Dialog {

@@ -19,9 +19,11 @@ class CustomRequirement(
     override fun check(context: RequirementContext): CompletableFuture<RequirementResult> {
         val description = messages.line(
             "requirement-custom",
-            Placeholder.parsed("placeholder", placeholder),
-            Placeholder.parsed("operator", operator),
-            Placeholder.parsed("value", value),
+            Placeholder.unparsed("placeholder", placeholder),
+            Placeholder.unparsed("placeholder_pretty", placeholder.replace("%", "").replace("_", " ").trim()),
+            Placeholder.unparsed("placeholder_parsed", PlaceholderAPI.setPlaceholders(context.player, placeholder)),
+            Placeholder.unparsed("operator", operator),
+            Placeholder.unparsed("value", value),
         )
         val result = if (evaluate(context)) {
             RequirementResult.satisfied(description)
@@ -35,7 +37,8 @@ class CustomRequirement(
         if (placeholder.isBlank()) return false
         if (!Bukkit.getPluginManager().isPluginEnabled("PlaceholderAPI")) return false
         val actual = PlaceholderAPI.setPlaceholders(context.player, placeholder).trim()
-        return compare(actual, value.trim(), operator.trim().lowercase())
+        val valueParsed = PlaceholderAPI.setPlaceholders(context.player, this.value).trim()
+        return compare(actual, valueParsed, operator.trim().lowercase())
     }
 
     private fun compare(actual: String, expected: String, op: String): Boolean = when (op) {

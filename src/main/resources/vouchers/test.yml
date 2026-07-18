@@ -1,4 +1,6 @@
 cmd: "lp user %player% parent addtemp vip 7d"
+# Optional: redeem this code with /testget instead of /code test (registered on restart).
+# redeem-command: testget
 console: true
 hide: false
 requirements:
@@ -8,6 +10,6 @@ requirements:
       - DIAMOND_ORE
       - DEEPSLATE_DIAMOND_ORE
   - type: playtime
-    seconds: 3600
+    duration: 1h
   - type: account_age
-    days: 7
+    duration: 7d

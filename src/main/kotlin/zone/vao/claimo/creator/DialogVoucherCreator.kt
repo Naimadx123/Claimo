@@ -31,6 +31,7 @@ class DialogVoucherCreator(private val plugin: Claimo) : VoucherCreator, Listene
     private class Draft(val reqPages: List<List<TypeSpec>>) {
         var id = ""
         var command = ""
+        var redeemCommand = ""
         var console = true
         var hide = false
         var expires = ""
@@ -46,7 +47,8 @@ class DialogVoucherCreator(private val plugin: Claimo) : VoucherCreator, Listene
     private val pendingDelete = ConcurrentHashMap<UUID, String>()
 
     override fun open(player: Player) {
-        val draft = newDraft()
+        val draft = sessions[player.uniqueId]?.takeIf { !it.editing } ?: newDraft()
+        draft.page = 0
         sessions[player.uniqueId] = draft
         player.showDialog(buildPage(draft))
     }
@@ -68,6 +70,7 @@ class DialogVoucherCreator(private val plugin: Claimo) : VoucherCreator, Listene
                 is List<*> -> cmd.firstOrNull()?.toString().orEmpty()
                 else -> ""
             }
+            redeemCommand = yaml.getString("redeem-command").orEmpty().trim()
             console = yaml.getBoolean("console", true)
             hide = yaml.getBoolean("hide", false)
             expires = yaml.getString("expires").orEmpty().trim()
@@ -114,7 +117,7 @@ class DialogVoucherCreator(private val plugin: Claimo) : VoucherCreator, Listene
         }
         if (key == DELETE_OK) {
             val id = pendingDelete.remove(player.uniqueId) ?: return
-            plugin.server.globalRegionScheduler.run(plugin) { _ -> finishDelete(player, id) }
+            player.scheduler.run(plugin, { finishDelete(player, id) }, null)
             return
         }
 
@@ -123,7 +126,7 @@ class DialogVoucherCreator(private val plugin: Claimo) : VoucherCreator, Listene
         when (key) {
             NEXT -> reopen(player, draft, draft.page + 1)
             BACK -> reopen(player, draft, draft.page - 1)
-            CREATE -> plugin.server.globalRegionScheduler.run(plugin) { _ -> finalize(player, draft) }
+            CREATE -> player.scheduler.run(plugin, { finalize(player, draft) }, null)
         }
     }
 
@@ -142,6 +145,7 @@ class DialogVoucherCreator(private val plugin: Claimo) : VoucherCreator, Listene
         if (draft.page == 0) {
             draft.id = view.getText("id").orEmpty()
             draft.command = view.getText("command").orEmpty().trim()
+            draft.redeemCommand = view.getText("redeem_command").orEmpty().removePrefix("/").trim()
             draft.console = view.getBoolean("console") ?: true
             draft.hide = view.getBoolean("hide") ?: false
             draft.expires = view.getText("expires").orEmpty().trim()
@@ -197,6 +201,7 @@ class DialogVoucherCreator(private val plugin: Claimo) : VoucherCreator, Listene
         try {
             plugin.configManager.saveVoucher(safeId) { yaml ->
                 yaml.set("cmd", draft.command)
+                if (draft.redeemCommand.isNotBlank()) yaml.set("redeem-command", draft.redeemCommand)
                 yaml.set("console", draft.console)
                 yaml.set("hide", draft.hide)
                 if (draft.expires.isNotBlank()) {
@@ -246,6 +251,8 @@ class DialogVoucherCreator(private val plugin: Claimo) : VoucherCreator, Listene
             DialogInput.text("id", Component.text("Code name")).maxLength(32).width(300).initial(draft.id).build(),
             DialogInput.text("command", Component.text("Command (placeholder supported)"))
                 .maxLength(256).width(300).initial(draft.command).build(),
+            DialogInput.text("redeem_command", Component.text("Redeem command (e.g. testget, empty = none)"))
+                .maxLength(32).width(300).initial(draft.redeemCommand).build(),
             DialogInput.bool("console", Component.text("Run as console")).initial(draft.console).build(),
             DialogInput.bool("hide", Component.text("Hide from list")).initial(draft.hide).build(),
             DialogInput.text("expires", Component.text("Expires after (e.g. 5d, empty = never)"))
