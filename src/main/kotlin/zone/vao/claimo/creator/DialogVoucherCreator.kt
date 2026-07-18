@@ -47,7 +47,8 @@ class DialogVoucherCreator(private val plugin: Claimo) : VoucherCreator, Listene
     private val pendingDelete = ConcurrentHashMap<UUID, String>()
 
     override fun open(player: Player) {
-        val draft = newDraft()
+        val draft = sessions[player.uniqueId]?.takeIf { !it.editing } ?: newDraft()
+        draft.page = 0
         sessions[player.uniqueId] = draft
         player.showDialog(buildPage(draft))
     }
