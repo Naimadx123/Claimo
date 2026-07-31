@@ -98,6 +98,13 @@ class Claimo : JavaPlugin(), ClaimoService {
         configManager.load()
         statsService.trackMaterials(trackedBlockMaterials())
         statsService.configureMessagePolicies(messagePolicies())
+        refreshClientCommands()
+    }
+
+    private fun refreshClientCommands() {
+        for (player in server.onlinePlayers) {
+            player.scheduler.run(this, { player.updateCommands() }, null)
+        }
     }
 
     private fun messagePolicies(): Set<MessagePolicy> =
