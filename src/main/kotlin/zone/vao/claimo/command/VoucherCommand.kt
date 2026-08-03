@@ -2,6 +2,10 @@ package zone.vao.claimo.command
 
 import com.mojang.brigadier.Command
 import com.mojang.brigadier.arguments.StringArgumentType
+import com.mojang.brigadier.builder.LiteralArgumentBuilder
+import com.mojang.brigadier.context.CommandContext
+import com.mojang.brigadier.suggestion.Suggestions
+import com.mojang.brigadier.suggestion.SuggestionsBuilder
 import com.mojang.brigadier.tree.LiteralCommandNode
 import io.papermc.paper.command.brigadier.CommandSourceStack
 import io.papermc.paper.command.brigadier.Commands
@@ -9,6 +13,7 @@ import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder
 import org.bukkit.entity.Player
 import zone.vao.claimo.Claimo
 import zone.vao.claimo.creator.VoucherCreator
+import java.util.concurrent.CompletableFuture
 
 @Suppress("UnstableApiUsage")
 object VoucherCommand {
@@ -33,27 +38,26 @@ object VoucherCommand {
                 Command.SINGLE_SUCCESS
             }
             .then(
-                Commands.literal("reload")
-                    .requires { it.sender.hasPermission("claimo.admin") }
+                adminLiteral("reload")
                     .executes { ctx ->
                         plugin.reload()
                         plugin.configManager.config.messages.send(ctx.source.sender, "reloaded")
                         Command.SINGLE_SUCCESS
                     }
+                    .hideWhenUnusable()
             )
             .then(
-                Commands.literal("purge")
-                    .requires { it.sender.hasPermission("claimo.admin") }
+                adminLiteral("purge")
                     .executes { ctx ->
                         val messages = plugin.configManager.config.messages
                         val purged = plugin.usageService.purgeExcept(plugin.configManager.config.vouchers.keys)
                         messages.send(ctx.source.sender, "purged", Placeholder.parsed("amount", purged.toString()))
                         Command.SINGLE_SUCCESS
                     }
+                    .hideWhenUnusable()
             )
             .then(
-                Commands.literal("create")
-                    .requires { it.sender.hasPermission("claimo.admin") }
+                adminLiteral("create")
                     .executes { ctx ->
                         val sender = ctx.source.sender
                         val messages = plugin.configManager.config.messages
@@ -64,6 +68,7 @@ object VoucherCommand {
                         }
                         Command.SINGLE_SUCCESS
                     }
+                    .hideWhenUnusable()
             )
             .then(voucherAdminCommand(plugin, "edit") { creator, player, id -> creator.edit(player, id) })
             .then(voucherAdminCommand(plugin, "delete") { creator, player, id -> creator.delete(player, id) })
@@ -100,8 +105,7 @@ object VoucherCommand {
         literal: String,
         action: (VoucherCreator, Player, String) -> Unit,
     ): LiteralCommandNode<CommandSourceStack> =
-        Commands.literal(literal)
-            .requires { it.sender.hasPermission("claimo.admin") }
+        adminLiteral(literal)
             .then(
                 Commands.argument("voucher", StringArgumentType.word())
                     .suggests { _, builder ->
@@ -123,7 +127,34 @@ object VoucherCommand {
                         Command.SINGLE_SUCCESS
                     }
             )
-            .build()
+            .hideWhenUnusable()
+
+    private fun adminLiteral(literal: String): LiteralArgumentBuilder<CommandSourceStack> =
+        Commands.literal(literal).requires { it.sender.hasPermission("claimo.admin") }
+
+    private fun LiteralArgumentBuilder<CommandSourceStack>.hideWhenUnusable(): LiteralCommandNode<CommandSourceStack> =
+        GuardedLiteral(build())
+
+    private class GuardedLiteral(node: LiteralCommandNode<CommandSourceStack>) :
+        LiteralCommandNode<CommandSourceStack>(
+            node.literal,
+            node.command,
+            node.requirement,
+            node.redirect,
+            node.redirectModifier,
+            node.isFork,
+        ) {
+
+        init {
+            node.children.forEach(::addChild)
+        }
+
+        override fun listSuggestions(
+            context: CommandContext<CommandSourceStack>,
+            builder: SuggestionsBuilder,
+        ): CompletableFuture<Suggestions> =
+            if (requirement.test(context.source)) super.listSuggestions(context, builder) else Suggestions.empty()
+    }
 
     /** A standalone command that redeems [voucherId] directly, like `/<command> <voucherId>`. */
     fun buildRedeemCommand(plugin: Claimo, commandName: String, voucherId: String): LiteralCommandNode<CommandSourceStack> =
