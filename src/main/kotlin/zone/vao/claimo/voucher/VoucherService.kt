@@ -98,7 +98,7 @@ class VoucherService(private val plugin: Claimo) {
         val sender = if (voucher.console) plugin.server.consoleSender else player
         val papi = plugin.server.pluginManager.isPluginEnabled("PlaceholderAPI")
         for (rawCommand in voucher.commands) {
-            var command = rawCommand.removePrefix("/").replace("%player", player.name)
+            var command = rawCommand.removePrefix("/").replace("%player%", player.name)
             if (papi) command = PlaceholderAPI.setPlaceholders(player, command)
             if (command.isBlank()) continue
             plugin.server.dispatchCommand(sender, command)
