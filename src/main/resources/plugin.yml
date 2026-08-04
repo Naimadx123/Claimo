@@ -23,3 +23,6 @@ permissions:
   claimo.admin:
     description: Allows reloading the Claimo configuration.
     default: op
+  claimo.update:
+    description: Receives a notification on join when a new Claimo version is available.
+    default: op

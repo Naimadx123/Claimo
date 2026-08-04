@@ -34,6 +34,12 @@ redeem-sound:
 logging:
   redeems: true
 
+# Checks https://github.com/Naimadx123/Claimo/releases for a newer version.
+update-checker:
+  enabled: true
+  notify-admins: true # players with claimo.update get a message on join
+  interval-hours: 6 # how often to re-check (minimum 1)
+
 # Where redemption counts (global pools and per-player usage) are stored.
 storage:
   type: yaml
@@ -98,6 +104,21 @@ A sound played to the player on a successful redeem.
 
 When `true`, every successful redeem is appended to
 `plugins/Claimo/logs/redeems.log`.
+
+### `update-checker`
+
+Asks the GitHub releases API whether a newer Claimo build exists. The check runs off the main
+thread (Folia-safe) and never downloads anything — it only tells you a release is out.
+
+| Key | Meaning |
+| --- | --- |
+| `enabled` | Turn the check on or off (default `true`). |
+| `notify-admins` | Message players holding `claimo.update` shortly after they join (default `true`). |
+| `interval-hours` | How often to re-check, minimum `1` (default `6`). |
+
+The result is also logged to the console once per new version. Customise the in-game text with the
+`update-available` key in [`messages.yml`](/configuration/messages/) — it accepts `<latest>`,
+`<current>` and `<url>`.
 
 ### `storage`
 

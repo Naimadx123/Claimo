@@ -1,6 +1,7 @@
 package zone.vao.claimo.config
 
 import zone.vao.claimo.storage.StorageConfig
+import zone.vao.claimo.update.UpdateConfig
 import zone.vao.claimo.voucher.Voucher
 
 data class ClaimoConfig(
@@ -8,6 +9,7 @@ data class ClaimoConfig(
     val dialogCommandName: String?,
     val guiListEnabled: Boolean,
     val storage: StorageConfig,
+    val update: UpdateConfig,
     val redeemSound: SoundConfig,
     val logRedeems: Boolean,
     val messages: Messages,

@@ -26,6 +26,7 @@ import zone.vao.claimo.stats.MessagePolicy
 import zone.vao.claimo.stats.StatsService
 import zone.vao.claimo.storage.StorageFactory
 import zone.vao.claimo.storage.UsageStorage
+import zone.vao.claimo.update.UpdateChecker
 import zone.vao.claimo.usage.UsageService
 import zone.vao.claimo.util.Durations
 import zone.vao.claimo.voucher.Voucher
@@ -52,6 +53,7 @@ class Claimo : JavaPlugin(), ClaimoService {
     var codePrompt: CodePrompt? = null
         private set
     private lateinit var redeemLog: RedeemLog
+    private lateinit var updateChecker: UpdateChecker
 
     override fun onEnable() {
         requirementRegistry = RequirementRegistry(logger)
@@ -84,6 +86,10 @@ class Claimo : JavaPlugin(), ClaimoService {
         redeemLog = RedeemLog(this)
         server.pluginManager.registerEvents(redeemLog, this)
 
+        updateChecker = UpdateChecker(this)
+        server.pluginManager.registerEvents(updateChecker, this)
+        updateChecker.start()
+
         registerPlaceholders()
         registerMiniPlaceholders()
 
@@ -98,6 +104,7 @@ class Claimo : JavaPlugin(), ClaimoService {
         configManager.load()
         statsService.trackMaterials(trackedBlockMaterials())
         statsService.configureMessagePolicies(messagePolicies())
+        if (::updateChecker.isInitialized) updateChecker.start()
         refreshClientCommands()
     }
 
@@ -120,6 +127,7 @@ class Claimo : JavaPlugin(), ClaimoService {
     override fun redeem(player: Player, voucherId: String) = voucherService.redeem(player, voucherId)
 
     override fun onDisable() {
+        if (::updateChecker.isInitialized) updateChecker.stop()
         if (::redeemLog.isInitialized) redeemLog.shutdown()
         if (::usageService.isInitialized) usageService.shutdown()
         ClaimoApi.shutdown()

@@ -9,6 +9,7 @@ import org.bukkit.plugin.java.JavaPlugin
 import zone.vao.claimo.requirement.RequirementConfig
 import zone.vao.claimo.storage.StorageConfig
 import zone.vao.claimo.storage.StorageType
+import zone.vao.claimo.update.UpdateConfig
 import zone.vao.claimo.util.Durations
 import zone.vao.claimo.voucher.LimitMode
 import zone.vao.claimo.voucher.Voucher
@@ -42,6 +43,7 @@ class ConfigManager(private val plugin: JavaPlugin) {
             dialogCommandName = dialogCommandName,
             guiListEnabled = guiListEnabled,
             storage = parseStorage(main.getConfigurationSection("storage")),
+            update = parseUpdate(main.getConfigurationSection("update-checker")),
             redeemSound = parseSound(main.getConfigurationSection("redeem-sound")),
             logRedeems = main.getBoolean("logging.redeems", true),
             messages = parseMessages(messages),
@@ -66,6 +68,12 @@ class ConfigManager(private val plugin: JavaPlugin) {
         val pitch = section.getDouble("pitch", 1.0).toFloat()
         return SoundConfig(Sound.sound(key, source, volume, pitch))
     }
+
+    private fun parseUpdate(section: ConfigurationSection?): UpdateConfig = UpdateConfig(
+        enabled = section?.getBoolean("enabled", true) ?: true,
+        notifyAdmins = section?.getBoolean("notify-admins", true) ?: true,
+        intervalHours = (section?.getLong("interval-hours", 6L) ?: 6L).coerceAtLeast(1L),
+    )
 
     private fun parseStorage(section: ConfigurationSection?): StorageConfig = StorageConfig(
         type = StorageType.from(section?.getString("type")),
