@@ -5,6 +5,7 @@ import org.bukkit.Material
 import org.bukkit.entity.Player
 import org.bukkit.event.Listener
 import org.bukkit.plugin.java.JavaPlugin
+import zone.vao.claimo.command.AdminSuggestionFilter
 import zone.vao.claimo.command.VoucherCommand
 import zone.vao.claimo.config.ConfigManager
 import zone.vao.claimo.creator.VoucherCreator
@@ -96,6 +97,7 @@ class Claimo : JavaPlugin(), ClaimoService {
         ClaimoApi.init(this)
 
         registerCommand()
+        server.pluginManager.registerEvents(AdminSuggestionFilter(this), this)
 
         logger.info("Claimo enabled — redeem command: /${configManager.config.commandName}")
     }
