@@ -91,6 +91,23 @@ object VoucherCommand {
                             )
                     )
             )
+            .then(
+                adminLiteral("generate")
+                    .then(
+                        Commands.argument("voucher", StringArgumentType.word())
+                            .suggests { _, builder ->
+                                val input = builder.remaining.lowercase()
+                                plugin.configManager.config.vouchers.keys
+                                    .filter { it.lowercase().startsWith(input) }
+                                    .forEach(builder::suggest)
+                                builder.buildFuture()
+                            }
+                            .then(
+                                Commands.argument("amount", IntegerArgumentType.integer(1, 500))
+                                    .executes { ctx -> generateCodes(plugin, ctx) }
+                            )
+                    )
+            )
             .then(voucherAdminCommand(plugin, "edit") { creator, player, id -> creator.edit(player, id) })
             .then(voucherAdminCommand(plugin, "delete") { creator, player, id -> creator.delete(player, id) })
             .then(
@@ -99,7 +116,7 @@ object VoucherCommand {
                         if (ctx.source.sender.hasPermission("claimo.use")) {
                             val input = builder.remaining.lowercase()
                             plugin.configManager.config.vouchers.values
-                                .filter { !it.hidden && !it.isExpired() && it.id.lowercase().startsWith(input) }
+                                .filter { !it.hidden && it.isAvailable() && it.id.lowercase().startsWith(input) }
                                 .forEach { builder.suggest(it.id) }
                         }
                         builder.buildFuture()
@@ -143,6 +160,34 @@ object VoucherCommand {
                 }
             }
         }
+        return Command.SINGLE_SUCCESS
+    }
+
+    private fun generateCodes(plugin: Claimo, ctx: CommandContext<CommandSourceStack>): Int {
+        val messages = plugin.configManager.config.messages
+        val sender = ctx.source.sender
+        val id = StringArgumentType.getString(ctx, "voucher")
+        val amount = IntegerArgumentType.getInteger(ctx, "amount")
+        val safeId = plugin.configManager.sanitizeId(id)
+        if (safeId == null || !plugin.configManager.voucherExists(safeId)) {
+            messages.send(sender, "creator-not-found", Placeholder.parsed("voucher", id))
+            return Command.SINGLE_SUCCESS
+        }
+        val list = runCatching { plugin.configManager.generateCodes(safeId, amount) }
+            .onFailure { plugin.logger.warning("Failed to generate codes from '$safeId': ${it.message}") }
+            .getOrNull()
+        if (list == null) {
+            messages.send(sender, "creator-failed")
+            return Command.SINGLE_SUCCESS
+        }
+        plugin.reload()
+        messages.send(
+            sender,
+            "generated",
+            Placeholder.parsed("amount", amount.toString()),
+            Placeholder.parsed("voucher", safeId),
+            Placeholder.parsed("file", "generated/${list.name}"),
+        )
         return Command.SINGLE_SUCCESS
     }
 

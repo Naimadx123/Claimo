@@ -16,6 +16,9 @@ import zone.vao.claimo.voucher.LimitMode
 import zone.vao.claimo.voucher.Voucher
 import zone.vao.claimo.voucher.VoucherItem
 import java.io.File
+import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.ZoneId
 
 class ConfigManager(private val plugin: JavaPlugin) {
 
@@ -147,6 +150,33 @@ class ConfigManager(private val plugin: JavaPlugin) {
     fun deleteVoucher(safeId: String): Boolean =
         File(File(plugin.dataFolder, VOUCHERS_DIR), "$safeId.yml").delete()
 
+
+    fun generateCodes(templateId: String, amount: Int): File? {
+        val template = readVoucher(templateId) ?: return null
+        template.set("hide", true)
+        template.set("limit.mode", "global")
+        template.set("limit.amount", 1)
+        template.set("redeem-command", null)
+        template.set("created", System.currentTimeMillis())
+
+        val dir = File(plugin.dataFolder, VOUCHERS_DIR)
+        val codes = ArrayList<String>(amount)
+        repeat(amount) {
+            var code: String
+            do {
+                code = "$templateId-" + buildString { repeat(6) { append(GEN_CHARS.random()) } }
+            } while (voucherExists(code))
+            template.save(File(dir, "$code.yml"))
+            codes += code
+        }
+
+        val out = File(plugin.dataFolder, "generated")
+        out.mkdirs()
+        val list = File(out, "$templateId-${System.currentTimeMillis()}.txt")
+        list.writeText(codes.joinToString(System.lineSeparator()))
+        return list
+    }
+
     private fun loadVouchers(): Map<String, Voucher> {
         val dir = File(plugin.dataFolder, VOUCHERS_DIR)
         val files = dir.listFiles { f -> f.isFile && f.name.endsWith(".yml") }
@@ -206,9 +236,10 @@ class ConfigManager(private val plugin: JavaPlugin) {
 
     private fun parseVoucher(id: String, section: ConfigurationSection, defaultCreatedAt: Long): Voucher {
         val limit = section.getConfigurationSection("limit")
+        val (commands, chances) = parseCommands(id, section.get("cmd"))
         return Voucher(
             id = id,
-            commands = parseCommands(section.get("cmd")),
+            commands = commands,
             console = section.getBoolean("console", true),
             hidden = section.getBoolean("hide", false),
             limitMode = parseLimitMode(limit?.getString("mode")),
@@ -217,8 +248,39 @@ class ConfigManager(private val plugin: JavaPlugin) {
             expiresAt = parseExpiry(id, section, defaultCreatedAt),
             redeemCommand = parseRedeemCommand(section.getString("redeem-command")),
             item = parseItem(id, section.getConfigurationSection("item")),
+            startsAt = parseStarts(id, section, defaultCreatedAt),
+            cooldownMillis = parseCooldown(id, section),
+            random = section.getBoolean("random", false),
+            commandChances = chances,
         )
     }
+
+    private fun parseCooldown(id: String, section: ConfigurationSection): Long? {
+        val raw = section.getString("cooldown")?.trim().orEmpty()
+        if (raw.isEmpty()) return null
+        return Durations.parseMillis(raw) ?: run {
+            plugin.logger.warning("Voucher '$id' has an invalid 'cooldown' value '$raw'; ignoring it.")
+            null
+        }
+    }
+
+    private fun parseStarts(id: String, section: ConfigurationSection, defaultCreatedAt: Long): Long? {
+        val raw = section.getString("starts")?.trim().orEmpty()
+        if (raw.isEmpty()) return null
+        Durations.parseMillis(raw)?.let { duration ->
+            val createdAt = if (section.contains("created")) section.getLong("created") else defaultCreatedAt
+            return createdAt + duration
+        }
+        return parseDateTime(raw) ?: run {
+            plugin.logger.warning("Voucher '$id' has an invalid 'starts' value '$raw' (use a duration like 2d or a date like 2026-08-15 18:00); ignoring it.")
+            null
+        }
+    }
+
+    private fun parseDateTime(raw: String): Long? = runCatching {
+        val date = if (raw.length <= 10) LocalDate.parse(raw).atStartOfDay() else LocalDateTime.parse(raw.replace(' ', 'T'))
+        date.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+    }.getOrNull()
 
     private fun parseItem(id: String, section: ConfigurationSection?): VoucherItem? {
         if (section == null) return null
@@ -288,10 +350,34 @@ class ConfigManager(private val plugin: JavaPlugin) {
         else -> LimitMode.NONE
     }
 
-    private fun parseCommands(value: Any?): List<String> = when (value) {
-        is String -> listOf(value)
-        is List<*> -> value.mapNotNull { it?.toString() }
-        else -> emptyList()
+    private fun parseCommands(id: String, value: Any?): Pair<List<String>, List<Double>> {
+        val entries = when (value) {
+            is String -> return listOf(value) to emptyList()
+            is List<*> -> value
+            else -> return emptyList<String>() to emptyList()
+        }
+        val commands = mutableListOf<String>()
+        val chances = mutableListOf<Double>()
+        var weighted = false
+        for (entry in entries) {
+            when (entry) {
+                is Map<*, *> -> {
+                    val command = (entry["command"] ?: entry["cmd"])?.toString()
+                    if (command == null) {
+                        plugin.logger.warning("Voucher '$id' has a cmd entry without a 'command'; skipping it.")
+                        continue
+                    }
+                    commands += command
+                    val chance = (entry["chance"] as? Number)?.toDouble()
+                    if (chance != null) weighted = true
+                    chances += (chance ?: 1.0).coerceAtLeast(0.0)
+                }
+                else -> {
+                    entry?.toString()?.let { commands += it; chances += 1.0 }
+                }
+            }
+        }
+        return commands to (if (weighted) chances else emptyList())
     }
 
     private fun parseRequirements(voucherId: String, list: List<Map<*, *>>): List<RequirementConfig> =
@@ -310,5 +396,7 @@ class ConfigManager(private val plugin: JavaPlugin) {
         val DEFAULT_FILES = listOf("config.yml", "messages.yml", "gui.yml")
         const val VOUCHERS_DIR = "vouchers"
         const val DEFAULT_VOUCHER = "test.yml"
+
+        const val GEN_CHARS = "abcdefghjkmnpqrstuvwxyz23456789"
     }
 }

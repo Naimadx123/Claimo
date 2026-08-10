@@ -13,7 +13,17 @@ data class Voucher(
     val expiresAt: Long? = null,
     val redeemCommand: String? = null,
     val item: VoucherItem? = null,
+    val startsAt: Long? = null,
+    val cooldownMillis: Long? = null,
+    val random: Boolean = false,
+    val commandChances: List<Double> = emptyList(),
 ) {
     fun isExpired(now: Long = System.currentTimeMillis()): Boolean =
         expiresAt != null && now >= expiresAt
+
+    fun isNotStarted(now: Long = System.currentTimeMillis()): Boolean =
+        startsAt != null && now < startsAt
+
+    fun isAvailable(now: Long = System.currentTimeMillis()): Boolean =
+        !isExpired(now) && !isNotStarted(now)
 }

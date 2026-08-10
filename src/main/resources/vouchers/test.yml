@@ -3,6 +3,19 @@ cmd: "lp user %player% parent addtemp vip 7d"
 # redeem-command: testget
 console: true
 hide: false
+# Optional: run ONE random command from `cmd` instead of all of them. Default: false.
+# Add `chance:` weights per entry for non-uniform odds:
+# random: true
+# cmd:
+#   - command: "give %player% diamond 5"
+#     chance: 10
+#   - command: "give %player% dirt 1"
+#     chance: 90
+# Optional: the code only becomes active after this moment. Accepts a duration
+# counted like `expires` (e.g. 2d) or an absolute local date/time.
+# starts: "2026-08-15 18:00"
+# Optional: per-player delay between redemptions (e.g. a daily code).
+# cooldown: 1d
 # Optional item form - give with /code give <players> test [amount]; players redeem by right-clicking.
 # item:
 #   material: PAPER
