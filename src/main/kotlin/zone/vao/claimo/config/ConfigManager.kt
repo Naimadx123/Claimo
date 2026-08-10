@@ -2,6 +2,7 @@ package zone.vao.claimo.config
 
 import net.kyori.adventure.key.Key
 import net.kyori.adventure.sound.Sound
+import org.bukkit.Color
 import org.bukkit.Material
 import org.bukkit.configuration.ConfigurationSection
 import org.bukkit.configuration.file.YamlConfiguration
@@ -13,6 +14,7 @@ import zone.vao.claimo.update.UpdateConfig
 import zone.vao.claimo.util.Durations
 import zone.vao.claimo.voucher.LimitMode
 import zone.vao.claimo.voucher.Voucher
+import zone.vao.claimo.voucher.VoucherItem
 import java.io.File
 
 class ConfigManager(private val plugin: JavaPlugin) {
@@ -214,10 +216,57 @@ class ConfigManager(private val plugin: JavaPlugin) {
             requirements = parseRequirements(id, section.getMapList("requirements")),
             expiresAt = parseExpiry(id, section, defaultCreatedAt),
             redeemCommand = parseRedeemCommand(section.getString("redeem-command")),
+            item = parseItem(id, section.getConfigurationSection("item")),
         )
     }
 
-    /** Reads a per-voucher redeem command: strips a leading `/`, trims, and keeps only the first token. */
+    private fun parseItem(id: String, section: ConfigurationSection?): VoucherItem? {
+        if (section == null) return null
+        val material = section.getString("material")?.let { name ->
+            Material.matchMaterial(name.trim()) ?: run {
+                plugin.logger.warning("Voucher '$id' has an unknown item material '$name'; falling back to PAPER.")
+                null
+            }
+        }
+
+        var cmdInt: Int? = null
+        var cmdFloats = emptyList<Float>()
+        var cmdFlags = emptyList<Boolean>()
+        var cmdStrings = emptyList<String>()
+        var cmdColors = emptyList<Color>()
+        when (val cmd = section.get("custom_model_data")) {
+            is Number -> cmdInt = cmd.toInt()
+            is List<*> -> cmdFloats = cmd.mapNotNull { (it as? Number)?.toFloat() }
+            is ConfigurationSection -> {
+                cmdFloats = cmd.getFloatList("floats")
+                cmdFlags = cmd.getBooleanList("flags")
+                cmdStrings = cmd.getStringList("strings")
+                cmdColors = cmd.getStringList("colors").mapNotNull { parseColor(id, it) }
+            }
+        }
+
+        return VoucherItem(
+            material = material,
+            name = section.getString("name"),
+            lore = section.getStringList("lore"),
+            itemModel = section.getString("item_model")?.trim()?.ifEmpty { null },
+            customModelData = cmdInt,
+            cmdFloats = cmdFloats,
+            cmdFlags = cmdFlags,
+            cmdStrings = cmdStrings,
+            cmdColors = cmdColors,
+            nexoItem = section.getString("nexo_item")?.trim()?.ifEmpty { null },
+            iaItem = section.getString("ia_item")?.trim()?.ifEmpty { null },
+            ceItem = section.getString("ce_item")?.trim()?.ifEmpty { null },
+        )
+    }
+
+    private fun parseColor(id: String, raw: String): Color? =
+        runCatching { Color.fromRGB(raw.trim().removePrefix("#").toInt(16)) }.getOrElse {
+            plugin.logger.warning("Voucher '$id' has an invalid custom_model_data color '$raw' (expected hex like #FF0000); ignoring it.")
+            null
+        }
+
     private fun parseRedeemCommand(raw: String?): String? =
         raw?.removePrefix("/")?.trim()?.substringBefore(' ')?.ifEmpty { null }
 

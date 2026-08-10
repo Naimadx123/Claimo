@@ -37,6 +37,12 @@ limit:
 requirements:
   - type: blocks_mined
     amount: 100
+# Optional physical item form — give with /code give, redeem by right-clicking.
+item:
+  material: PAPER
+  name: "<aqua>Test voucher"
+  lore:
+    - "<gray>Right-click to redeem."
 ```
 
 ## Fields
@@ -166,6 +172,55 @@ requirements:
 
 See [Requirements](/guides/requirements/) for the full catalogue of built-in types and
 their parameters.
+
+### `item` — a physical voucher item
+
+Optional. Gives the code an item form: admins hand it out with
+`/code give <players> <code> [amount]` and players redeem it by **right-clicking**
+(one item is consumed per successful redeem — requirements and limits still apply).
+
+Every key inside `item` is optional; an empty `item:` section falls back to plain paper.
+
+```yaml
+item:
+  material: PAPER                  # any Bukkit material (default: PAPER)
+  name: "<aqua>Test voucher"       # MiniMessage; <voucher> resolves to the code
+  lore:
+    - "<gray>Right-click to redeem."
+  custom_model_data: 1             # single value — works on every version
+  item_model: "minecraft:paper"    # resource key, 1.21.2+ servers only
+```
+
+On **1.21.4+** servers, `custom_model_data` also accepts the component form with lists
+(a bare list is treated as `floats`):
+
+```yaml
+item:
+  custom_model_data:
+    floats: [1.0]
+    flags: [true]
+    strings: ["ruby"]
+    colors: ["#FF0000"]            # hex colors
+```
+
+Instead of the settings above, the item can come from another item plugin — set exactly
+one of these to that plugin's item id (name, lore and model keys still apply on top if set):
+
+```yaml
+item:
+  nexo_item: item_id     # Nexo
+  # ia_item: item_id     # ItemsAdder
+  # ce_item: item_id     # CraftEngine
+```
+
+If the referenced plugin or item id can't be resolved, Claimo logs a warning and falls
+back to `material` (or paper).
+
+<Aside type="tip" title="Items update themselves">
+	Voucher items carry a fingerprint of their `item` section. After you edit it and run
+	`/code reload`, outdated copies held by players are rebuilt automatically — on join,
+	when they open an inventory, or when the item is dropped.
+</Aside>
 
 ## Reloading
 

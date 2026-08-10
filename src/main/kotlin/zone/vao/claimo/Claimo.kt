@@ -31,6 +31,7 @@ import zone.vao.claimo.update.UpdateChecker
 import zone.vao.claimo.usage.UsageService
 import zone.vao.claimo.util.Durations
 import zone.vao.claimo.voucher.Voucher
+import zone.vao.claimo.voucher.VoucherItemService
 import zone.vao.claimo.voucher.VoucherService
 
 @Suppress("UnstableApiUsage")
@@ -43,6 +44,8 @@ class Claimo : JavaPlugin(), ClaimoService {
     lateinit var configManager: ConfigManager
         private set
     lateinit var voucherService: VoucherService
+        private set
+    lateinit var voucherItemService: VoucherItemService
         private set
     lateinit var usageService: UsageService
         private set
@@ -72,6 +75,9 @@ class Claimo : JavaPlugin(), ClaimoService {
         usageService.load()
 
         voucherService = VoucherService(this)
+
+        voucherItemService = VoucherItemService(this)
+        server.pluginManager.registerEvents(voucherItemService, this)
 
         voucherMenu = VoucherMenu(this)
         server.pluginManager.registerEvents(voucherMenu, this)

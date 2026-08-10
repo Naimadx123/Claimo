@@ -1,11 +1,15 @@
 package zone.vao.claimo.command
 
 import com.mojang.brigadier.Command
+import com.mojang.brigadier.arguments.IntegerArgumentType
 import com.mojang.brigadier.arguments.StringArgumentType
 import com.mojang.brigadier.builder.LiteralArgumentBuilder
+import com.mojang.brigadier.context.CommandContext
 import com.mojang.brigadier.tree.LiteralCommandNode
 import io.papermc.paper.command.brigadier.CommandSourceStack
 import io.papermc.paper.command.brigadier.Commands
+import io.papermc.paper.command.brigadier.argument.ArgumentTypes
+import io.papermc.paper.command.brigadier.argument.resolvers.selector.PlayerSelectorArgumentResolver
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder
 import org.bukkit.entity.Player
 import zone.vao.claimo.Claimo
@@ -64,6 +68,29 @@ object VoucherCommand {
                         Command.SINGLE_SUCCESS
                     }
             )
+            .then(
+                adminLiteral("give")
+                    .then(
+                        Commands.argument("players", ArgumentTypes.players())
+                            .then(
+                                Commands.argument("voucher", StringArgumentType.word())
+                                    .suggests { _, builder ->
+                                        val input = builder.remaining.lowercase()
+                                        plugin.configManager.config.vouchers.values
+                                            .filter { it.item != null && it.id.lowercase().startsWith(input) }
+                                            .forEach { builder.suggest(it.id) }
+                                        builder.buildFuture()
+                                    }
+                                    .executes { ctx -> giveItems(plugin, ctx, 1) }
+                                    .then(
+                                        Commands.argument("amount", IntegerArgumentType.integer(1, 2304))
+                                            .executes { ctx ->
+                                                giveItems(plugin, ctx, IntegerArgumentType.getInteger(ctx, "amount"))
+                                            }
+                                    )
+                            )
+                    )
+            )
             .then(voucherAdminCommand(plugin, "edit") { creator, player, id -> creator.edit(player, id) })
             .then(voucherAdminCommand(plugin, "delete") { creator, player, id -> creator.delete(player, id) })
             .then(
@@ -93,6 +120,31 @@ object VoucherCommand {
                     }
             )
             .build()
+
+    private fun giveItems(plugin: Claimo, ctx: CommandContext<CommandSourceStack>, amount: Int): Int {
+        val messages = plugin.configManager.config.messages
+        val sender = ctx.source.sender
+        val id = StringArgumentType.getString(ctx, "voucher")
+        val voucher = plugin.configManager.config.vouchers[id]
+        when {
+            voucher == null -> messages.send(sender, "no-such-voucher", Placeholder.parsed("voucher", id))
+            voucher.item == null -> messages.send(sender, "item-not-configured", Placeholder.parsed("voucher", id))
+            else -> {
+                val targets = ctx.getArgument("players", PlayerSelectorArgumentResolver::class.java).resolve(ctx.source)
+                for (target in targets) {
+                    target.scheduler.run(plugin, { plugin.voucherItemService.give(target, voucher, amount) }, null)
+                    messages.send(
+                        sender,
+                        "item-given",
+                        Placeholder.parsed("voucher", id),
+                        Placeholder.parsed("amount", amount.toString()),
+                        Placeholder.parsed("player", target.name),
+                    )
+                }
+            }
+        }
+        return Command.SINGLE_SUCCESS
+    }
 
     private fun voucherAdminCommand(
         plugin: Claimo,

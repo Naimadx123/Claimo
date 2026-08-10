@@ -3,6 +3,23 @@ cmd: "lp user %player% parent addtemp vip 7d"
 # redeem-command: testget
 console: true
 hide: false
+# Optional item form - give with /code give <players> test [amount]; players redeem by right-clicking.
+# item:
+#   material: PAPER
+#   name: "<aqua>Test voucher"
+#   lore:
+#     - "<gray>Right-click to redeem."
+#   custom_model_data: 1          # single value (all versions)
+#   # custom_model_data:          # component form (1.21.4+ only)
+#   #   floats: [1.0]
+#   #   flags: [true]
+#   #   strings: ["ruby"]
+#   #   colors: ["#FF0000"]
+#   item_model: "minecraft:paper"  # 1.21.2+ only
+#   # Or take the item from another plugin instead of the settings above:
+#   # nexo_item: item_id
+#   # ia_item: item_id
+#   # ce_item: item_id
 requirements:
   - type: blocks_mined
     amount: 100

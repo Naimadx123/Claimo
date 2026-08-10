@@ -12,7 +12,7 @@ import java.util.concurrent.CompletableFuture
 
 class VoucherService(private val plugin: Claimo) {
 
-    fun redeem(player: Player, voucherId: String) {
+    fun redeem(player: Player, voucherId: String, onSuccess: (() -> Unit)? = null) {
         val config = plugin.configManager.config
         val messages = config.messages
 
@@ -51,7 +51,7 @@ class VoucherService(private val plugin: Claimo) {
         }
 
         CompletableFuture.allOf(*checks.toTypedArray()).whenComplete { _, _ ->
-            player.scheduler.run(plugin, { completeRedeem(player, voucher, checks) }, null)
+            player.scheduler.run(plugin, { completeRedeem(player, voucher, checks, onSuccess) }, null)
         }
     }
 
@@ -59,6 +59,7 @@ class VoucherService(private val plugin: Claimo) {
         player: Player,
         voucher: Voucher,
         checks: List<CompletableFuture<RequirementResult>>,
+        onSuccess: (() -> Unit)?,
     ) {
         if (!player.isOnline) return
         val messages = plugin.configManager.config.messages
@@ -85,6 +86,7 @@ class VoucherService(private val plugin: Claimo) {
         plugin.configManager.config.redeemSound.sound?.let(player::playSound)
         VoucherRedeemedEvent(player, voucher).callEvent()
         messages.send(player, "success", Placeholder.parsed("voucher", voucher.id))
+        onSuccess?.invoke()
     }
 
     private fun sendLimitMessage(player: Player, voucher: Voucher) {
