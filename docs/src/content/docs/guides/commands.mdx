@@ -18,6 +18,7 @@ the GUI, and admin management — hangs off it.
 | `/<command> edit <voucher>` | Edit an existing code in the dialog wizard <Badge text="1.21.7+" variant="tip" /> | `claimo.admin` |
 | `/<command> delete <voucher>` | Delete a code (with a confirm dialog) <Badge text="1.21.7+" variant="tip" /> | `claimo.admin` |
 | `/<command> give <players> <voucher> [amount]` | Give a voucher's item form (supports selectors like `@a`) | `claimo.admin` |
+| `/<command> generate <voucher> <amount>` | Generate hidden one-time copies of a code (max 500 per run) | `claimo.admin` |
 | `/<command> reload` | Reload config and voucher files | `claimo.admin` |
 | `/<command> purge` | Drop stored usage for codes whose config was deleted | `claimo.admin` |
 
@@ -54,6 +55,11 @@ command: kod
 - `/<command> purge` removes stored redemption counts (global and per-player) for every code
   that no longer has a config file. Deleting a code alone leaves its history in the database;
   purge is the explicit, one-off cleanup, and it lets a re-created code start fresh.
+
+- `/<command> generate <voucher> <amount>` clones an existing code into hidden, one-time
+  (`limit: global 1`) copies named `<voucher>-x7k2q9` and saves the full list to
+  `plugins/Claimo/generated/<voucher>-<timestamp>.txt` — hand those out on Discord, in a
+  store, etc. Expiry (`expires`) is re-counted from the moment of generation.
 
 <Aside type="tip">
 	From the console, the bare command prints usage instead of opening a GUI (there's no

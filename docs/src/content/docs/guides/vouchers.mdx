@@ -72,6 +72,24 @@ optional.
 - With **PlaceholderAPI** installed, any other `%placeholder%` (e.g. `%player_uuid%`,
   `%vault_eco_balance%`) is resolved too.
 
+### `random` — pick one command instead of all
+
+<Badge text="default: false" variant="note" /> — with `random: true`, **one** entry from
+`cmd` is picked at random per redeem (instead of running all of them). The pick is uniform
+unless entries declare a `chance` weight:
+
+```yaml
+random: true
+cmd:
+  - command: "give %player% diamond 5"
+    chance: 10                          # 10 / (10+90) = 10%
+  - command: "give %player% dirt 1"
+    chance: 90
+```
+
+Weights are relative — they don't have to add up to 100. Plain string entries and
+weighted map entries can be mixed; strings count as `chance: 1`.
+
 ### `console` — who runs the command
 
 <Badge text="default: true" variant="note" /> — run the command as **console** (`true`)
@@ -124,6 +142,32 @@ Units combine: `1d12h` means one and a half days.
 <Aside type="note" title="What is it counted from?">
 	Expiry counts from the `created` timestamp (epoch millis, written by the in-game
 	creator) when present, otherwise from the file's **last-modified time**.
+</Aside>
+
+### `starts` — an activation time
+
+Optional. Before this moment the code behaves like a hidden one — it's out of the GUI and
+tab-completion, and redeeming answers with a "starts in …" message. Accepts either a
+duration counted the same way as `expires` (from `created`, else the file's last-modified
+time) or an absolute **local** date/time:
+
+```yaml
+starts: "2026-08-15 18:00"   # or a date: "2026-08-15", or a duration: 2d
+expires: 30d                 # combine both for a from–to window
+```
+
+### `cooldown` — a per-player delay
+
+Optional. Each player must wait this long between redemptions — ideal for daily/weekly
+codes. Same duration units as `expires`. Unlike `limit`, it doesn't cap total uses.
+
+```yaml
+cooldown: 1d    # a daily code
+```
+
+<Aside type="note">
+	Cooldowns are stored on the player, so they survive restarts and work independently of
+	the usage database.
 </Aside>
 
 ### `limit` — redemption caps
