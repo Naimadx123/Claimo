@@ -51,7 +51,13 @@ object VoucherCommand {
                     .executes { ctx ->
                         val messages = plugin.configManager.config.messages
                         val purged = plugin.usageService.purgeExcept(plugin.configManager.config.vouchers.keys)
-                        messages.send(ctx.source.sender, "purged", Placeholder.parsed("amount", purged.toString()))
+                        if (purged.isNotEmpty()) {
+                            for (player in plugin.server.onlinePlayers) {
+                                player.scheduler.run(plugin, { plugin.voucherService.clearCooldowns(player, purged) }, null)
+                            }
+                            plugin.actionLog.admin("${ctx.source.sender.name} purged ${purged.size} deleted code(s): ${purged.joinToString(", ")}")
+                        }
+                        messages.send(ctx.source.sender, "purged", Placeholder.parsed("amount", purged.size.toString()))
                         Command.SINGLE_SUCCESS
                     }
             )
