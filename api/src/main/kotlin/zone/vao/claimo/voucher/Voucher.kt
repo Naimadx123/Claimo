@@ -18,6 +18,7 @@ data class Voucher(
     val random: Boolean = false,
     val commandChances: List<Double> = emptyList(),
     val price: Double = 0.0,
+    val effects: VoucherEffects? = null,
 ) {
     fun isExpired(now: Long = System.currentTimeMillis()): Boolean =
         expiresAt != null && now >= expiresAt

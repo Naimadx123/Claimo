@@ -4,6 +4,7 @@ import net.kyori.adventure.key.Key
 import net.kyori.adventure.sound.Sound
 import org.bukkit.Color
 import org.bukkit.Material
+import org.bukkit.Particle
 import org.bukkit.configuration.ConfigurationSection
 import org.bukkit.configuration.file.YamlConfiguration
 import org.bukkit.plugin.java.JavaPlugin
@@ -14,6 +15,7 @@ import zone.vao.claimo.update.UpdateConfig
 import zone.vao.claimo.util.Durations
 import zone.vao.claimo.voucher.LimitMode
 import zone.vao.claimo.voucher.Voucher
+import zone.vao.claimo.voucher.VoucherEffects
 import zone.vao.claimo.voucher.VoucherItem
 import java.io.File
 import java.time.LocalDate
@@ -254,6 +256,7 @@ class ConfigManager(private val plugin: JavaPlugin) {
             random = section.getBoolean("random", false),
             commandChances = chances,
             price = section.getDouble("price", 0.0).coerceAtLeast(0.0),
+            effects = parseEffects(id, section.getConfigurationSection("effects")),
         )
     }
 
@@ -323,6 +326,26 @@ class ConfigManager(private val plugin: JavaPlugin) {
             iaItem = section.getString("ia_item")?.trim()?.ifEmpty { null },
             ceItem = section.getString("ce_item")?.trim()?.ifEmpty { null },
         )
+    }
+
+    private fun parseEffects(id: String, section: ConfigurationSection?): VoucherEffects? {
+        if (section == null) return null
+        val fireworks = section.getInt("fireworks", 0).coerceIn(0, 10)
+        val rawParticle = section.getString("particle")?.trim().orEmpty()
+        val particle = if (rawParticle.isEmpty()) null else {
+            runCatching { Particle.valueOf(rawParticle.uppercase()) }.getOrElse {
+                plugin.logger.warning("Voucher '$id' has an unknown particle '$rawParticle'; ignoring it.")
+                null
+            }
+        }
+        val rawShape = section.getString("shape")?.trim().orEmpty()
+        val shape = VoucherEffects.Shape.entries.firstOrNull { it.name.equals(rawShape, ignoreCase = true) }
+            ?: VoucherEffects.Shape.BURST
+        if (rawShape.isNotEmpty() && !VoucherEffects.Shape.entries.any { it.name.equals(rawShape, ignoreCase = true) }) {
+            plugin.logger.warning("Voucher '$id' has an unknown effect shape '$rawShape'; falling back to burst.")
+        }
+        if (fireworks <= 0 && particle == null) return null
+        return VoucherEffects(fireworks, particle, shape)
     }
 
     private fun parseColor(id: String, raw: String): Color? =
