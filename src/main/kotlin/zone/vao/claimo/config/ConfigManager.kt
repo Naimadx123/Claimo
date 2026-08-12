@@ -253,6 +253,7 @@ class ConfigManager(private val plugin: JavaPlugin) {
             cooldownMillis = parseCooldown(id, section),
             random = section.getBoolean("random", false),
             commandChances = chances,
+            price = section.getDouble("price", 0.0).coerceAtLeast(0.0),
         )
     }
 

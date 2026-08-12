@@ -12,6 +12,7 @@ data class ClaimoConfig(
     val update: UpdateConfig,
     val redeemSound: SoundConfig,
     val logRedeems: Boolean,
+    val logAdmin: Boolean,
     val messages: Messages,
     val gui: GuiConfig,
     val vouchers: Map<String, Voucher>,

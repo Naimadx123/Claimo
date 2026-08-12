@@ -229,6 +229,7 @@ class DialogVoucherCreator(private val plugin: Claimo) : VoucherCreator, Listene
 
         plugin.reload()
         val key = if (draft.editing) "creator-edited" else "creator-created"
+        plugin.actionLog.admin("${player.name} ${if (draft.editing) "edited" else "created"} code '$safeId'")
         messages.send(player, key, Placeholder.parsed("voucher", safeId))
         sessions.remove(player.uniqueId)
     }
@@ -237,6 +238,7 @@ class DialogVoucherCreator(private val plugin: Claimo) : VoucherCreator, Listene
         val messages = plugin.configManager.config.messages
         if (plugin.configManager.deleteVoucher(safeId)) {
             plugin.reload()
+            plugin.actionLog.admin("${player.name} deleted code '$safeId'")
             messages.send(player, "creator-deleted", Placeholder.parsed("voucher", safeId))
         } else {
             messages.send(player, "creator-not-found", Placeholder.parsed("voucher", safeId))

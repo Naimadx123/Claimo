@@ -3,6 +3,7 @@ package zone.vao.claimo.voucher
 import me.clip.placeholderapi.PlaceholderAPI
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder
 import net.milkbowl.vault.economy.Economy
+import org.bukkit.Bukkit
 import org.bukkit.NamespacedKey
 import org.bukkit.entity.Player
 import org.bukkit.persistence.PersistentDataType
@@ -54,6 +55,7 @@ class VoucherService(private val plugin: Claimo) {
             return
         }
 
+        if (!checkPrice(player, voucher)) return
 
         val context = RequirementContext(player, voucherId)
         val checks = voucher.requirements.map { spec ->
@@ -114,6 +116,7 @@ class VoucherService(private val plugin: Claimo) {
         if (!PlayerRedeemVoucherEvent(player, voucher).callEvent()) return
 
         if (!chargePrice(player, voucher)) return
+
         execute(player, voucher)
         plugin.usageService.record(player, voucher)
         if (voucher.cooldownMillis != null) {
@@ -140,6 +143,10 @@ class VoucherService(private val plugin: Claimo) {
     }
 
     private fun cooldownKey(voucherId: String) = NamespacedKey(plugin, "cooldown-$voucherId")
+
+    fun clearCooldowns(player: Player, voucherIds: Collection<String>) {
+        for (id in voucherIds) player.persistentDataContainer.remove(cooldownKey(id))
+    }
 
     private fun checkPrice(player: Player, voucher: Voucher): Boolean {
         if (voucher.price <= 0.0) return true

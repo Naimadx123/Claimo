@@ -150,6 +150,7 @@ object VoucherCommand {
                 val targets = ctx.getArgument("players", PlayerSelectorArgumentResolver::class.java).resolve(ctx.source)
                 for (target in targets) {
                     target.scheduler.run(plugin, { plugin.voucherItemService.give(target, voucher, amount) }, null)
+                    plugin.actionLog.admin("${sender.name} gave ${amount}x '$id' to ${target.name}")
                     messages.send(
                         sender,
                         "item-given",
@@ -181,6 +182,7 @@ object VoucherCommand {
             return Command.SINGLE_SUCCESS
         }
         plugin.reload()
+        plugin.actionLog.admin("${sender.name} generated $amount code(s) from '$safeId' -> generated/${list.name}")
         messages.send(
             sender,
             "generated",

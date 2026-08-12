@@ -10,7 +10,7 @@ import zone.vao.claimo.command.VoucherCommand
 import zone.vao.claimo.config.ConfigManager
 import zone.vao.claimo.creator.VoucherCreator
 import zone.vao.claimo.gui.VoucherMenu
-import zone.vao.claimo.log.RedeemLog
+import zone.vao.claimo.log.ActionLog
 import zone.vao.claimo.prompt.CodePrompt
 import zone.vao.claimo.requirement.RequirementConfig
 import zone.vao.claimo.requirement.RequirementInput
@@ -57,6 +57,7 @@ class Claimo : JavaPlugin(), ClaimoService {
     var codePrompt: CodePrompt? = null
         private set
     private lateinit var redeemLog: RedeemLog
+    lateinit var actionLog: ActionLog
     private lateinit var updateChecker: UpdateChecker
 
     override fun onEnable() {
@@ -92,6 +93,7 @@ class Claimo : JavaPlugin(), ClaimoService {
 
         redeemLog = RedeemLog(this)
         server.pluginManager.registerEvents(redeemLog, this)
+        actionLog = ActionLog(this)
 
         updateChecker = UpdateChecker(this)
         server.pluginManager.registerEvents(updateChecker, this)
@@ -136,7 +138,7 @@ class Claimo : JavaPlugin(), ClaimoService {
 
     override fun onDisable() {
         if (::updateChecker.isInitialized) updateChecker.stop()
-        if (::redeemLog.isInitialized) redeemLog.shutdown()
+        if (::actionLog.isInitialized) actionLog.shutdown()
         if (::usageService.isInitialized) usageService.shutdown()
         ClaimoApi.shutdown()
     }
