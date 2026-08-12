@@ -167,7 +167,23 @@ cooldown: 1d    # a daily code
 
 <Aside type="note">
 	Cooldowns are stored on the player, so they survive restarts and work independently of
-	the usage database.
+	the usage database. `/code purge` also clears the cooldowns of deleted codes for online
+	players.
+</Aside>
+
+### `price` — a Vault cost
+
+Optional. The player is charged this amount (via **Vault**) when the code is redeemed.
+Players who can't afford it get a `not-enough-money` message; the withdrawal happens only
+after every other check (limits, cooldown, requirements) has passed.
+
+```yaml
+price: 100.0
+```
+
+<Aside type="caution" title="Needs a Vault economy">
+	Requires Vault plus an economy provider (EssentialsX, CMI, …). Without one, a priced
+	code refuses to redeem rather than handing out the reward for free.
 </Aside>
 
 ### `limit` — redemption caps

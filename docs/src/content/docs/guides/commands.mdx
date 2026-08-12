@@ -53,8 +53,9 @@ command: kod
 - Vouchers with `hide: true` are excluded from both the GUI and tab-completion — they
   stay redeemable by typing the exact code.
 - `/<command> purge` removes stored redemption counts (global and per-player) for every code
-  that no longer has a config file. Deleting a code alone leaves its history in the database;
-  purge is the explicit, one-off cleanup, and it lets a re-created code start fresh.
+  that no longer has a config file, and clears the deleted codes' cooldowns for online
+  players. Deleting a code alone leaves its history in the database; purge is the explicit,
+  one-off cleanup, and it lets a re-created code start fresh.
 
 - `/<command> generate <voucher> <amount>` clones an existing code into hidden, one-time
   (`limit: global 1`) copies named `<voucher>-x7k2q9` and saves the full list to

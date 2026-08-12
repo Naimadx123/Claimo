@@ -147,15 +147,25 @@ on anything PAPI exposes — economy, level, stats — without a dedicated requi
 
 | Parameter | Meaning |
 | --- | --- |
-| `placeholder` | A PlaceholderAPI string to resolve for the player. |
+| `placeholder` | The left-hand side — resolved through PlaceholderAPI for the player. |
 | `operator` | One of `==` `!=` `contains` `regex` `>=` `<=` `>` `<`. |
-| `value` | The value to compare against. |
+| `value` | The right-hand side — also resolved through PlaceholderAPI, so a literal (`1000`, `true`) and another placeholder both work. |
 
 ```yaml
 - type: custom
   placeholder: "%vault_eco_balance%"
   operator: ">="
   value: "1000"
+
+# Both sides accept placeholders — literals and placeholders mix freely:
+- type: custom
+  placeholder: "%superiorskyblock_has_island%"
+  operator: "=="
+  value: "true"
+- type: custom
+  placeholder: "%player_level%"
+  operator: ">="
+  value: "%someplugin_required_level%"
 ```
 
 <Aside type="note">
@@ -172,7 +182,8 @@ can phrase the checklist line however you like:
 | `<placeholder_pretty>` | The placeholder with `%` stripped and `_` turned into spaces, e.g. `vault eco balance`. |
 | `<placeholder_parsed>` | The placeholder resolved to the player's current value. |
 | `<operator>` | The configured operator. |
-| `<value>` | The value being compared against. |
+| `<value>` | The raw `value` string as configured. |
+| `<value_parsed>` | The `value` resolved to the player's current value (same as `<value>` for literals). |
 
 ```yaml title="messages.yml"
 requirement-custom: "<placeholder_pretty>: <placeholder_parsed> (need <operator> <value>)"

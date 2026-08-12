@@ -30,9 +30,10 @@ redeem-sound:
   volume: 1.0
   pitch: 1.0
 
-# Append every successful redeem to plugins/Claimo/logs/redeems.log.
+# Append plugin activity to plugins/Claimo/logs/.
 logging:
   redeems: true
+  admin: true
 
 # Checks https://github.com/Naimadx123/Claimo/releases for a newer version.
 update-checker:
@@ -103,7 +104,12 @@ A sound played to the player on a successful redeem.
 ### `logging.redeems`
 
 When `true`, every successful redeem is appended to
-`plugins/Claimo/logs/redeems.log`.
+`plugins/Claimo/logs/redeems.log` — including the price paid, for codes with a `price`.
+
+### `logging.admin`
+
+When `true`, admin actions — `/code give`, `/code generate`, `/code purge` and the
+creator's create/edit/delete — are appended to `plugins/Claimo/logs/admin.log`.
 
 ### `update-checker`
 
