@@ -12,6 +12,7 @@ import zone.vao.claimo.creator.VoucherCreator
 import zone.vao.claimo.gui.VoucherMenu
 import zone.vao.claimo.log.ActionLog
 import zone.vao.claimo.prompt.CodePrompt
+import zone.vao.claimo.prompt.PriceConfirm
 import zone.vao.claimo.requirement.RequirementConfig
 import zone.vao.claimo.requirement.RequirementInput
 import zone.vao.claimo.requirement.RequirementRegistry
@@ -56,6 +57,8 @@ class Claimo : JavaPlugin(), ClaimoService {
         private set
     var codePrompt: CodePrompt? = null
         private set
+    var priceConfirm: PriceConfirm? = null
+        private set
     lateinit var actionLog: ActionLog
         private set
     private lateinit var updateChecker: UpdateChecker
@@ -90,6 +93,9 @@ class Claimo : JavaPlugin(), ClaimoService {
 
         codePrompt = createCodePromptIfSupported()
         (codePrompt as? Listener)?.let { server.pluginManager.registerEvents(it, this) }
+        voucherCreator = createDialogComponent("zone.vao.claimo.creator.DialogVoucherCreator", "the in-game code creator")
+        codePrompt = createDialogComponent("zone.vao.claimo.prompt.DialogCodePrompt", "the code input dialog")
+        priceConfirm = createDialogComponent("zone.vao.claimo.prompt.DialogPriceConfirm", "the price confirmation dialog")
 
         actionLog = ActionLog(this)
         server.pluginManager.registerEvents(actionLog, this)
@@ -275,32 +281,22 @@ class Claimo : JavaPlugin(), ClaimoService {
             .mapNotNullTo(HashSet()) { Material.matchMaterial(it.trim()) }
 
     private fun createDialogCreatorIfSupported(): VoucherCreator? {
+    @Suppress("UNCHECKED_CAST")
+    private fun <T> createDialogComponent(className: String, feature: String): T? {
         val supported = runCatching { Class.forName("io.papermc.paper.dialog.Dialog") }.isSuccess
         if (!supported) {
-            logger.info("Dialog API not available (server < 1.21.7); the in-game code creator is disabled.")
+            logger.info("Dialog API not available (server < 1.21.7); $feature is disabled.")
             return null
         }
         return runCatching {
             Class.forName("zone.vao.claimo.creator.DialogVoucherCreator")
                 .getConstructor(Claimo::class.java)
                 .newInstance(this) as VoucherCreator
+            val component = Class.forName(className).getConstructor(Claimo::class.java).newInstance(this)
+            (component as? Listener)?.let { server.pluginManager.registerEvents(it, this) }
+            component as T
         }.onFailure {
-            logger.warning("Failed to initialise the dialog code creator: ${it.message}")
-        }.getOrNull()
-    }
-
-    private fun createCodePromptIfSupported(): CodePrompt? {
-        val supported = runCatching { Class.forName("io.papermc.paper.dialog.Dialog") }.isSuccess
-        if (!supported) {
-            logger.info("Dialog API not available (server < 1.21.7); the code input dialog is disabled.")
-            return null
-        }
-        return runCatching {
-            Class.forName("zone.vao.claimo.prompt.DialogCodePrompt")
-                .getConstructor(Claimo::class.java)
-                .newInstance(this) as CodePrompt
-        }.onFailure {
-            logger.warning("Failed to initialise the code input dialog: ${it.message}")
+            logger.warning("Failed to initialise $feature: ${it.message}")
         }.getOrNull()
     }
 

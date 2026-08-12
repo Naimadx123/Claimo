@@ -43,4 +43,8 @@ item-not-configured: "<red>The code <white><voucher></white> has no 'item' secti
 item-given: "<green>Gave <white><amount>x <voucher></white> voucher item(s) to <white><player></white>."
 not-enough-money: "<red>You need <white><price></white> to redeem the code <white><voucher></white>."
 price-unavailable: "<red>The code <white><voucher></white> requires a payment, but the economy is unavailable right now."
+confirm-price: "<yellow>The code <white><voucher></white> costs <white><price></white> - redeem it again within 10 seconds to confirm."
+price-confirm-title: "Confirm payment"
+price-confirm-body: "Redeeming <voucher> will cost <price>."
+creator-invalid-price: "<red>Invalid price - use a plain number like 100 or 49.99."
 update-available: "<yellow>Claimo <white><latest></white> is available (you are running <white><current></white>). <gray>Download: <aqua><click:open_url:'<url>'><url></click></aqua>"

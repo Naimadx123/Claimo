@@ -13,11 +13,15 @@ import zone.vao.claimo.event.PlayerRedeemVoucherEvent
 import zone.vao.claimo.event.VoucherRedeemedEvent
 import zone.vao.claimo.requirement.RequirementContext
 import zone.vao.claimo.requirement.RequirementResult
+import java.util.UUID
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.ConcurrentHashMap
 
 class VoucherService(private val plugin: Claimo) {
 
-    fun redeem(player: Player, voucherId: String, onSuccess: (() -> Unit)? = null) {
+    private val pendingConfirms = ConcurrentHashMap<UUID, Pair<String, Long>>()
+
+    fun redeem(player: Player, voucherId: String, confirmed: Boolean = false, onSuccess: (() -> Unit)? = null) {
         val config = plugin.configManager.config
         val messages = config.messages
 
@@ -56,6 +60,7 @@ class VoucherService(private val plugin: Claimo) {
         }
 
         if (!checkPrice(player, voucher)) return
+        if (voucher.price > 0.0 && !confirmed && !confirmPrice(player, voucher, onSuccess)) return
 
         val context = RequirementContext(player, voucherId)
         val checks = voucher.requirements.map { spec ->
@@ -123,6 +128,9 @@ class VoucherService(private val plugin: Claimo) {
             player.persistentDataContainer.set(cooldownKey(voucher.id), PersistentDataType.LONG, System.currentTimeMillis())
         }
         plugin.configManager.config.redeemSound.sound?.let(player::playSound)
+        runCatching { RedeemEffects.play(player, voucher.effects) }.onFailure {
+            plugin.logger.warning("Failed to play redeem effects for '${voucher.id}': ${it.message}")
+        }
         VoucherRedeemedEvent(player, voucher).callEvent()
         messages.send(player, "success", Placeholder.parsed("voucher", voucher.id))
         onSuccess?.invoke()
@@ -146,6 +154,28 @@ class VoucherService(private val plugin: Claimo) {
 
     fun clearCooldowns(player: Player, voucherIds: Collection<String>) {
         for (id in voucherIds) player.persistentDataContainer.remove(cooldownKey(id))
+    }
+
+    private fun confirmPrice(player: Player, voucher: Voucher, onSuccess: (() -> Unit)?): Boolean {
+        val priceText = economy()?.format(voucher.price) ?: voucher.price.toString()
+        plugin.priceConfirm?.let {
+            it.open(player, voucher.id, priceText, onSuccess)
+            return false
+        }
+        val pending = pendingConfirms[player.uniqueId]
+        if (pending != null && pending.first == voucher.id &&
+            System.currentTimeMillis() - pending.second < CONFIRM_WINDOW_MS
+        ) {
+            pendingConfirms.remove(player.uniqueId)
+            return true
+        }
+        pendingConfirms[player.uniqueId] = voucher.id to System.currentTimeMillis()
+        plugin.configManager.config.messages.send(
+            player, "confirm-price",
+            Placeholder.parsed("voucher", voucher.id),
+            Placeholder.parsed("price", priceText),
+        )
+        return false
     }
 
     private fun checkPrice(player: Player, voucher: Voucher): Boolean {
@@ -202,6 +232,10 @@ class VoucherService(private val plugin: Claimo) {
             if (command.isBlank()) continue
             plugin.server.dispatchCommand(sender, command)
         }
+    }
+
+    private companion object {
+        const val CONFIRM_WINDOW_MS = 10_000L
     }
 
     private fun pickRandom(voucher: Voucher): String? {
