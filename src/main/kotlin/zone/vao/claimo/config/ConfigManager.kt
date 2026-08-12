@@ -51,6 +51,7 @@ class ConfigManager(private val plugin: JavaPlugin) {
             update = parseUpdate(main.getConfigurationSection("update-checker")),
             redeemSound = parseSound(main.getConfigurationSection("redeem-sound")),
             logRedeems = main.getBoolean("logging.redeems", true),
+            logAdmin = main.getBoolean("logging.admin", true),
             messages = parseMessages(messages),
             gui = parseGui(gui),
             vouchers = loadVouchers(),

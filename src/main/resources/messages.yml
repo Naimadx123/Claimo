@@ -41,4 +41,6 @@ code-cooldown: "<red>You can redeem <white><voucher></white> again in <white><re
 generated: "<green>Generated <white><amount></white> one-time code(s) from <white><voucher></white> — list saved to <white><file></white>."
 item-not-configured: "<red>The code <white><voucher></white> has no 'item' section configured."
 item-given: "<green>Gave <white><amount>x <voucher></white> voucher item(s) to <white><player></white>."
+not-enough-money: "<red>You need <white><price></white> to redeem the code <white><voucher></white>."
+price-unavailable: "<red>The code <white><voucher></white> requires a payment, but the economy is unavailable right now."
 update-available: "<yellow>Claimo <white><latest></white> is available (you are running <white><current></white>). <gray>Download: <aqua><click:open_url:'<url>'><url></click></aqua>"

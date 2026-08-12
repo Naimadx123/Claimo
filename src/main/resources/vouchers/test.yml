@@ -16,6 +16,8 @@ hide: false
 # starts: "2026-08-15 18:00"
 # Optional: per-player delay between redemptions (e.g. a daily code).
 # cooldown: 1d
+# Optional: Vault economy price charged when the code is redeemed.
+# price: 100.0
 # Optional item form - give with /code give <players> test [amount]; players redeem by right-clicking.
 # item:
 #   material: PAPER

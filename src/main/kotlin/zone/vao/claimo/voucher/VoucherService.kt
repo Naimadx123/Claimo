@@ -2,6 +2,7 @@ package zone.vao.claimo.voucher
 
 import me.clip.placeholderapi.PlaceholderAPI
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder
+import net.milkbowl.vault.economy.Economy
 import org.bukkit.NamespacedKey
 import org.bukkit.entity.Player
 import org.bukkit.persistence.PersistentDataType
@@ -52,6 +53,7 @@ class VoucherService(private val plugin: Claimo) {
             sendLimitMessage(player, voucher)
             return
         }
+
 
         val context = RequirementContext(player, voucherId)
         val checks = voucher.requirements.map { spec ->
@@ -111,6 +113,7 @@ class VoucherService(private val plugin: Claimo) {
 
         if (!PlayerRedeemVoucherEvent(player, voucher).callEvent()) return
 
+        if (!chargePrice(player, voucher)) return
         execute(player, voucher)
         plugin.usageService.record(player, voucher)
         if (voucher.cooldownMillis != null) {
@@ -137,6 +140,50 @@ class VoucherService(private val plugin: Claimo) {
     }
 
     private fun cooldownKey(voucherId: String) = NamespacedKey(plugin, "cooldown-$voucherId")
+
+    private fun checkPrice(player: Player, voucher: Voucher): Boolean {
+        if (voucher.price <= 0.0) return true
+        val messages = plugin.configManager.config.messages
+        val economy = economy()
+        if (economy == null) {
+            plugin.logger.warning("Voucher '${voucher.id}' has a price but no Vault economy provider is installed.")
+            messages.send(player, "price-unavailable", Placeholder.parsed("voucher", voucher.id))
+            return false
+        }
+        if (!economy.has(player, voucher.price)) {
+            messages.send(
+                player, "not-enough-money",
+                Placeholder.parsed("voucher", voucher.id),
+                Placeholder.parsed("price", economy.format(voucher.price)),
+            )
+            return false
+        }
+        return true
+    }
+
+    private fun chargePrice(player: Player, voucher: Voucher): Boolean {
+        if (voucher.price <= 0.0) return true
+        val messages = plugin.configManager.config.messages
+        val economy = economy() ?: run {
+            messages.send(player, "price-unavailable", Placeholder.parsed("voucher", voucher.id))
+            return false
+        }
+        val response = economy.withdrawPlayer(player, voucher.price)
+        if (!response.transactionSuccess()) {
+            messages.send(
+                player, "not-enough-money",
+                Placeholder.parsed("voucher", voucher.id),
+                Placeholder.parsed("price", economy.format(voucher.price)),
+            )
+            return false
+        }
+        return true
+    }
+
+    private fun economy(): Economy? {
+        if (!Bukkit.getPluginManager().isPluginEnabled("Vault")) return null
+        return Bukkit.getServicesManager().getRegistration(Economy::class.java)?.provider
+    }
 
     private fun execute(player: Player, voucher: Voucher) {
         val sender = if (voucher.console) plugin.server.consoleSender else player
