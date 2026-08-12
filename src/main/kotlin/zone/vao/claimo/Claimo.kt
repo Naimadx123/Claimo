@@ -56,8 +56,8 @@ class Claimo : JavaPlugin(), ClaimoService {
         private set
     var codePrompt: CodePrompt? = null
         private set
-    private lateinit var redeemLog: RedeemLog
     lateinit var actionLog: ActionLog
+        private set
     private lateinit var updateChecker: UpdateChecker
 
     override fun onEnable() {
@@ -91,9 +91,8 @@ class Claimo : JavaPlugin(), ClaimoService {
         codePrompt = createCodePromptIfSupported()
         (codePrompt as? Listener)?.let { server.pluginManager.registerEvents(it, this) }
 
-        redeemLog = RedeemLog(this)
-        server.pluginManager.registerEvents(redeemLog, this)
         actionLog = ActionLog(this)
+        server.pluginManager.registerEvents(actionLog, this)
 
         updateChecker = UpdateChecker(this)
         server.pluginManager.registerEvents(updateChecker, this)
@@ -244,7 +243,7 @@ class Claimo : JavaPlugin(), ClaimoService {
             listOf(
                 RequirementInput.TextInput("placeholder", "Placeholder (e.g. %vault_eco_balance%)"),
                 RequirementInput.TextInput("operator", "Operator (>=, <=, ==, !=, contains, regex)", initial = ">="),
-                RequirementInput.TextInput("value", "Value to compare against"),
+                RequirementInput.TextInput("value", "Value to compare against (placeholders work too)"),
             ),
         )
     }
