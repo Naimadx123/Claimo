@@ -136,10 +136,10 @@ class ConfigManager(private val plugin: JavaPlugin) {
     fun voucherExists(safeId: String): Boolean =
         File(File(plugin.dataFolder, VOUCHERS_DIR), "$safeId.yml").exists()
 
-    fun saveVoucher(safeId: String, build: (YamlConfiguration) -> Unit) {
+    fun saveVoucher(safeId: String, base: YamlConfiguration? = null, build: (YamlConfiguration) -> Unit) {
         val dir = File(plugin.dataFolder, VOUCHERS_DIR)
         dir.mkdirs()
-        val yaml = YamlConfiguration()
+        val yaml = base ?: YamlConfiguration()
         build(yaml)
         yaml.save(File(dir, "$safeId.yml"))
     }

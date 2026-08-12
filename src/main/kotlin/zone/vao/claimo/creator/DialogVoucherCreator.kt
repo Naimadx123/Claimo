@@ -14,6 +14,8 @@ import net.kyori.adventure.key.Key
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder
+import org.bukkit.Material
+import org.bukkit.Particle
 import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
@@ -37,6 +39,14 @@ class DialogVoucherCreator(private val plugin: Claimo) : VoucherCreator, Listene
         var expires = ""
         var uses = 0
         var perPlayer = false
+        var price = ""
+        var itemEnabled = false
+        var itemMaterial = ""
+        var itemName = ""
+        var itemLore = ""
+        var fxFireworks = 0
+        var fxParticle = ""
+        var fxShape = ""
         var editing = false
         var originalId = ""
         val requirements = LinkedHashMap<String, MutableMap<String, Any>>()
@@ -79,6 +89,14 @@ class DialogVoucherCreator(private val plugin: Claimo) : VoucherCreator, Listene
                 uses = yaml.getInt("limit.amount", 1)
                 perPlayer = mode == "per_player"
             }
+            price = yaml.getDouble("price", 0.0).takeIf { it > 0 }?.toString().orEmpty()
+            itemEnabled = yaml.isConfigurationSection("item")
+            itemMaterial = yaml.getString("item.material").orEmpty().trim()
+            itemName = yaml.getString("item.name").orEmpty()
+            itemLore = yaml.getStringList("item.lore").joinToString(" | ")
+            fxFireworks = yaml.getInt("effects.fireworks", 0)
+            fxParticle = yaml.getString("effects.particle").orEmpty().trim()
+            fxShape = yaml.getString("effects.shape").orEmpty().trim()
             for (entry in yaml.getMapList("requirements")) {
                 val map = entry.entries.associate { (k, v) -> k.toString() to v }
                 val type = map["type"]?.toString()?.lowercase() ?: continue
@@ -137,7 +155,7 @@ class DialogVoucherCreator(private val plugin: Claimo) : VoucherCreator, Listene
     }
 
     private fun reopen(player: Player, draft: Draft, page: Int) {
-        draft.page = page.coerceIn(0, draft.reqPages.size)
+        draft.page = page.coerceIn(0, draft.reqPages.size + 1)
         player.scheduler.run(plugin, { player.showDialog(buildPage(draft)) }, null)
     }
 
@@ -151,9 +169,20 @@ class DialogVoucherCreator(private val plugin: Claimo) : VoucherCreator, Listene
             draft.expires = view.getText("expires").orEmpty().trim()
             draft.uses = view.getFloat("uses")?.toInt() ?: 0
             draft.perPlayer = view.getBoolean("per_player") ?: false
+            draft.price = view.getText("price").orEmpty().trim()
             return
         }
-        for (spec in draft.reqPages[draft.page - 1]) {
+        if (draft.page == 1) {
+            draft.itemEnabled = view.getBoolean("item_enabled") ?: false
+            draft.itemMaterial = view.getText("item_material").orEmpty().trim()
+            draft.itemName = view.getText("item_name").orEmpty().trim()
+            draft.itemLore = view.getText("item_lore").orEmpty().trim()
+            draft.fxFireworks = view.getFloat("fx_fireworks")?.toInt() ?: 0
+            draft.fxParticle = view.getText("fx_particle").orEmpty().trim()
+            draft.fxShape = view.getText("fx_shape").orEmpty().trim()
+            return
+        }
+        for (spec in draft.reqPages[draft.page - 2]) {
             if (view.getBoolean(enableKey(spec.type)) != true) {
                 draft.requirements.remove(spec.type)
                 continue
@@ -197,20 +226,58 @@ class DialogVoucherCreator(private val plugin: Claimo) : VoucherCreator, Listene
             reopen(player, draft, 0)
             return
         }
+        val price = draft.price.replace(',', '.').toDoubleOrNull() ?: 0.0
+        if (draft.price.isNotBlank() && (draft.price.replace(',', '.').toDoubleOrNull() == null || price < 0)) {
+            messages.send(player, "creator-invalid-price")
+            reopen(player, draft, 0)
+            return
+        }
+        if (draft.itemEnabled && draft.itemMaterial.isNotBlank() && Material.matchMaterial(draft.itemMaterial) == null) {
+            messages.send(player, "creator-invalid-material")
+            reopen(player, draft, 1)
+            return
+        }
+        if (draft.fxParticle.isNotBlank() && runCatching { Particle.valueOf(draft.fxParticle.uppercase()) }.isFailure) {
+            messages.send(player, "creator-invalid-particle")
+            reopen(player, draft, 1)
+            return
+        }
 
         try {
-            plugin.configManager.saveVoucher(safeId) { yaml ->
+            val base = if (draft.editing) plugin.configManager.readVoucher(safeId) else null
+            plugin.configManager.saveVoucher(safeId, base) { yaml ->
                 yaml.set("cmd", draft.command)
-                if (draft.redeemCommand.isNotBlank()) yaml.set("redeem-command", draft.redeemCommand)
+                yaml.set("redeem-command", draft.redeemCommand.ifBlank { null })
                 yaml.set("console", draft.console)
                 yaml.set("hide", draft.hide)
                 if (draft.expires.isNotBlank()) {
                     yaml.set("expires", draft.expires)
                     yaml.set("created", System.currentTimeMillis())
+                } else {
+                    yaml.set("expires", null)
+                    if (yaml.getString("starts").isNullOrBlank()) yaml.set("created", null)
                 }
                 if (draft.uses > 0) {
                     yaml.set("limit.mode", if (draft.perPlayer) "per-player" else "global")
                     yaml.set("limit.amount", draft.uses)
+                } else {
+                    yaml.set("limit", null)
+                }
+                yaml.set("price", price.takeIf { it > 0 })
+                if (draft.itemEnabled) {
+                    yaml.set("item.material", draft.itemMaterial.ifBlank { null })
+                    yaml.set("item.name", draft.itemName.ifBlank { null })
+                    yaml.set("item.lore", draft.itemLore.split('|').map { it.trim() }.filter { it.isNotEmpty() }.ifEmpty { null })
+                    if (yaml.getConfigurationSection("item")?.getKeys(false).isNullOrEmpty()) yaml.set("item.material", "PAPER")
+                } else {
+                    yaml.set("item", null)
+                }
+                if (draft.fxFireworks > 0 || draft.fxParticle.isNotBlank()) {
+                    yaml.set("effects.fireworks", draft.fxFireworks.takeIf { it > 0 })
+                    yaml.set("effects.particle", draft.fxParticle.ifBlank { null })
+                    yaml.set("effects.shape", draft.fxShape.ifBlank { null })
+                } else {
+                    yaml.set("effects", null)
                 }
                 val requirements = draft.requirements.map { (type, params) ->
                     LinkedHashMap<String, Any>().apply {
@@ -218,7 +285,7 @@ class DialogVoucherCreator(private val plugin: Claimo) : VoucherCreator, Listene
                         putAll(params)
                     }
                 }
-                if (requirements.isNotEmpty()) yaml.set("requirements", requirements)
+                yaml.set("requirements", requirements.ifEmpty { null })
             }
         } catch (ex: Exception) {
             plugin.logger.warning("Failed to write voucher '$safeId': ${ex.message}")
@@ -245,8 +312,11 @@ class DialogVoucherCreator(private val plugin: Claimo) : VoucherCreator, Listene
         }
     }
 
-    private fun buildPage(draft: Draft): Dialog =
-        if (draft.page == 0) buildSettingsPage(draft) else buildRequirementPage(draft, draft.page - 1)
+    private fun buildPage(draft: Draft): Dialog = when (draft.page) {
+        0 -> buildSettingsPage(draft)
+        1 -> buildExtrasPage(draft)
+        else -> buildRequirementPage(draft, draft.page - 2)
+    }
 
     private fun buildSettingsPage(draft: Draft): Dialog {
         val inputs = listOf(
@@ -263,14 +333,45 @@ class DialogVoucherCreator(private val plugin: Claimo) : VoucherCreator, Listene
                 .step(1f).initial(draft.uses.toFloat().coerceIn(0f, 1000f)).width(300).build(),
             DialogInput.bool("per_player", Component.text("Limit is per player (off = shared)"))
                 .initial(draft.perPlayer).build(),
+            DialogInput.text("price", Component.text("Price (Vault, empty = free)"))
+                .maxLength(16).width(300).initial(draft.price).build(),
         )
-        val advance = if (draft.reqPages.isEmpty()) {
-            button("Save", NamedTextColor.GREEN, CREATE)
-        } else {
-            button("Next »", NamedTextColor.YELLOW, NEXT)
-        }
         val title = if (draft.editing) "Edit ${draft.originalId} — settings" else "Create a code — settings"
-        return dialog(title, "Fill in the code, then continue to its requirements.", inputs, listOf(advance))
+        return dialog(
+            title,
+            "Fill in the code, then continue to its item, effects and requirements.",
+            inputs,
+            listOf(button("Next »", NamedTextColor.YELLOW, NEXT)),
+        )
+    }
+
+    private fun buildExtrasPage(draft: Draft): Dialog {
+        val inputs = listOf(
+            DialogInput.bool("item_enabled", Component.text("Give as an item (/code give)"))
+                .initial(draft.itemEnabled).build(),
+            DialogInput.text("item_material", Component.text("Item material (e.g. PAPER)"))
+                .maxLength(64).width(300).initial(draft.itemMaterial).build(),
+            DialogInput.text("item_name", Component.text("Item name (MiniMessage)"))
+                .maxLength(128).width(300).initial(draft.itemName).build(),
+            DialogInput.text("item_lore", Component.text("Item lore (separate lines with |)"))
+                .maxLength(256).width(300).initial(draft.itemLore).build(),
+            DialogInput.numberRange("fx_fireworks", Component.text("Fireworks on redeem"), 0f, 10f)
+                .step(1f).initial(draft.fxFireworks.toFloat().coerceIn(0f, 10f)).width(300).build(),
+            DialogInput.text("fx_particle", Component.text("Particle on redeem (e.g. FLAME, empty = none)"))
+                .maxLength(64).width(300).initial(draft.fxParticle).build(),
+            DialogInput.text("fx_shape", Component.text("Particle shape (burst, circle, sphere, helix)"))
+                .maxLength(16).width(300).initial(draft.fxShape).build(),
+        )
+        val actions = listOf(
+            button("« Back", NamedTextColor.GRAY, BACK),
+            if (draft.reqPages.isEmpty()) button("Save", NamedTextColor.GREEN, CREATE) else button("Next »", NamedTextColor.YELLOW, NEXT),
+        )
+        return dialog(
+            "Item & effects",
+            "Optional: hand the code out as an item and celebrate the redeem.",
+            inputs,
+            actions,
+        )
     }
 
     private fun buildRequirementPage(draft: Draft, index: Int): Dialog {

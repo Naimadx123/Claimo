@@ -51,4 +51,6 @@ item-received: "<green>You received <white><amount>x <voucher></white> voucher i
 info-header: "<gray>Code <white><voucher></white>:"
 info-line: "<gray>  <key>: <white><value>"
 creator-invalid-price: "<red>Invalid price - use a plain number like 100 or 49.99."
+creator-invalid-material: "<red>Unknown item material. Use Bukkit names like PAPER or NETHER_STAR."
+creator-invalid-particle: "<red>Unknown particle name. Use Bukkit names like FLAME, HEART, HAPPY_VILLAGER."
 update-available: "<yellow>Claimo <white><latest></white> is available (you are running <white><current></white>). <gray>Download: <aqua><click:open_url:'<url>'><url></click></aqua>"
