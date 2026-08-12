@@ -47,8 +47,10 @@ used on a server.
 
 ## For developers
 
-The public API is published separately, so an addon can compile against it without shipping
-the whole plugin:
+The public API is published separately to <https://repo.vao.zone/>, so an addon can compile
+against it without shipping the whole plugin.
+
+Gradle:
 
 ```kotlin
 repositories {
@@ -57,6 +59,27 @@ repositories {
 dependencies {
     compileOnly("zone.vao:claimo-api:<version>")
 }
+```
+
+Maven:
+
+```xml
+<repositories>
+    <repository>
+        <id>vao-releases</id>
+        <url>https://repo.vao.zone/releases</url>
+        <!-- or https://repo.vao.zone/snapshots for -SNAPSHOT versions -->
+    </repository>
+</repositories>
+
+<dependencies>
+    <dependency>
+        <groupId>zone.vao</groupId>
+        <artifactId>claimo-api</artifactId>
+        <version>VERSION</version>
+        <scope>provided</scope>
+    </dependency>
+</dependencies>
 ```
 
 Registering a requirement type, the events, and the full `ClaimoApi` surface are documented
