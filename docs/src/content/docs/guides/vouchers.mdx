@@ -181,10 +181,28 @@ after every other check (limits, cooldown, requirements) has passed.
 price: 100.0
 ```
 
+Redeeming a priced code always asks for confirmation first: on **1.21.7+** a confirmation
+dialog opens, on older servers the player is asked to redeem the code **again within 10
+seconds** — so a stray right-click on a voucher item never charges anyone by accident.
+
 <Aside type="caution" title="Needs a Vault economy">
 	Requires Vault plus an economy provider (EssentialsX, CMI, …). Without one, a priced
 	code refuses to redeem rather than handing out the reward for free.
 </Aside>
+
+### `effects` — a celebration on redeem
+
+Optional. Fireworks and/or a particle shape played at the player when the redeem succeeds.
+
+```yaml
+effects:
+  fireworks: 2       # rockets launched at the player (0-10)
+  particle: FLAME    # any Bukkit particle name, omit for none
+  shape: helix       # burst (default), circle, sphere or helix
+```
+
+An unknown particle or shape logs a console warning and is skipped — the redeem itself is
+never blocked by a bad effect.
 
 ### `limit` — redemption caps
 

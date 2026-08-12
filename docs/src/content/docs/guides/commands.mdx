@@ -18,6 +18,8 @@ the GUI, and admin management — hangs off it.
 | `/<command> edit <voucher>` | Edit an existing code in the dialog wizard <Badge text="1.21.7+" variant="tip" /> | `claimo.admin` |
 | `/<command> delete <voucher>` | Delete a code (with a confirm dialog) <Badge text="1.21.7+" variant="tip" /> | `claimo.admin` |
 | `/<command> give <players> <voucher> [amount]` | Give a voucher's item form (supports selectors like `@a`) | `claimo.admin` |
+| `/<command> giveoffline <player> <voucher> [amount]` | Give a voucher item to an offline player — queued and delivered on their next join | `claimo.admin` |
+| `/<command> info <voucher>` | Print a code's full configuration and its global use count | `claimo.admin` |
 | `/<command> generate <voucher> <amount>` | Generate hidden one-time copies of a code (max 500 per run) | `claimo.admin` |
 | `/<command> reload` | Reload config and voucher files | `claimo.admin` |
 | `/<command> purge` | Drop stored usage for codes whose config was deleted | `claimo.admin` |
@@ -56,6 +58,12 @@ command: kod
   that no longer has a config file, and clears the deleted codes' cooldowns for online
   players. Deleting a code alone leaves its history in the database; purge is the explicit,
   one-off cleanup, and it lets a re-created code start fresh.
+
+- `/<command> giveoffline` queues the items in `plugins/Claimo/pending-gives.yml` when the
+  target is offline (an online target is handed the items immediately). A player can have
+  several queued entries — winning three giveaways while offline delivers all three on the
+  next join. Entries whose code (or its `item` section) was deleted in the meantime are
+  skipped and noted in `logs/admin.log`.
 
 - `/<command> generate <voucher> <amount>` clones an existing code into hidden, one-time
   (`limit: global 1`) copies named `<voucher>-x7k2q9` and saves the full list to
