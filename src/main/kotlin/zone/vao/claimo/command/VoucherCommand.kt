@@ -14,6 +14,8 @@ import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder
 import org.bukkit.entity.Player
 import zone.vao.claimo.Claimo
 import zone.vao.claimo.creator.VoucherCreator
+import zone.vao.claimo.util.Durations
+import zone.vao.claimo.voucher.LimitMode
 import java.util.concurrent.ConcurrentHashMap
 
 @Suppress("UnstableApiUsage")
@@ -98,6 +100,43 @@ object VoucherCommand {
                     )
             )
             .then(
+                adminLiteral("giveoffline")
+                    .then(
+                        Commands.argument("player", StringArgumentType.word())
+                            .then(
+                                Commands.argument("voucher", StringArgumentType.word())
+                                    .suggests { _, builder ->
+                                        val input = builder.remaining.lowercase()
+                                        plugin.configManager.config.vouchers.values
+                                            .filter { it.item != null && it.id.lowercase().startsWith(input) }
+                                            .forEach { builder.suggest(it.id) }
+                                        builder.buildFuture()
+                                    }
+                                    .executes { ctx -> giveOffline(plugin, ctx, 1) }
+                                    .then(
+                                        Commands.argument("amount", IntegerArgumentType.integer(1, 2304))
+                                            .executes { ctx ->
+                                                giveOffline(plugin, ctx, IntegerArgumentType.getInteger(ctx, "amount"))
+                                            }
+                                    )
+                            )
+                    )
+            )
+            .then(
+                adminLiteral("info")
+                    .then(
+                        Commands.argument("voucher", StringArgumentType.word())
+                            .suggests { _, builder ->
+                                val input = builder.remaining.lowercase()
+                                plugin.configManager.config.vouchers.keys
+                                    .filter { it.lowercase().startsWith(input) }
+                                    .forEach(builder::suggest)
+                                builder.buildFuture()
+                            }
+                            .executes { ctx -> sendInfo(plugin, ctx) }
+                    )
+            )
+            .then(
                 adminLiteral("generate")
                     .then(
                         Commands.argument("voucher", StringArgumentType.word())
@@ -166,6 +205,86 @@ object VoucherCommand {
                     )
                 }
             }
+        }
+        return Command.SINGLE_SUCCESS
+    }
+
+    private fun giveOffline(plugin: Claimo, ctx: CommandContext<CommandSourceStack>, amount: Int): Int {
+        val messages = plugin.configManager.config.messages
+        val sender = ctx.source.sender
+        val id = StringArgumentType.getString(ctx, "voucher")
+        val name = StringArgumentType.getString(ctx, "player")
+        val voucher = plugin.configManager.config.vouchers[id]
+        when {
+            voucher == null -> messages.send(sender, "no-such-voucher", Placeholder.parsed("voucher", id))
+            voucher.item == null -> messages.send(sender, "item-not-configured", Placeholder.parsed("voucher", id))
+            else -> {
+                val resolvers = arrayOf(
+                    Placeholder.parsed("voucher", id),
+                    Placeholder.parsed("amount", amount.toString()),
+                    Placeholder.parsed("player", name),
+                )
+                val online = plugin.server.getPlayerExact(name)
+                if (online != null) {
+                    online.scheduler.run(plugin, { plugin.voucherItemService.give(online, voucher, amount) }, null)
+                    plugin.actionLog.admin("${sender.name} gave ${amount}x '$id' to ${online.name}")
+                    messages.send(sender, "item-given", *resolvers)
+                } else {
+                    plugin.pendingGiveService.queue(name, id, amount)
+                    plugin.actionLog.admin("${sender.name} queued ${amount}x '$id' for $name")
+                    messages.send(sender, "item-queued", *resolvers)
+                }
+            }
+        }
+        return Command.SINGLE_SUCCESS
+    }
+
+    private fun sendInfo(plugin: Claimo, ctx: CommandContext<CommandSourceStack>): Int {
+        val messages = plugin.configManager.config.messages
+        val sender = ctx.source.sender
+        val id = StringArgumentType.getString(ctx, "voucher")
+        val voucher = plugin.configManager.config.vouchers[id]
+        if (voucher == null) {
+            messages.send(sender, "no-such-voucher", Placeholder.parsed("voucher", id))
+            return Command.SINGLE_SUCCESS
+        }
+        val now = System.currentTimeMillis()
+        val lines = buildList {
+            add("commands" to "${voucher.commands.size}${if (voucher.random) " (one at random)" else ""}")
+            add("console" to voucher.console.toString())
+            add("hidden" to voucher.hidden.toString())
+            if (voucher.limitMode != LimitMode.NONE) {
+                add("limit" to "${voucher.limitMode.name.lowercase().replace('_', '-')} ${voucher.limitAmount}")
+            }
+            voucher.redeemCommand?.let { add("redeem-command" to "/$it") }
+            if (voucher.price > 0.0) add("price" to voucher.price.toString())
+            voucher.cooldownMillis?.let { add("cooldown" to Durations.humanize(it)) }
+            voucher.startsAt?.let {
+                add("starts" to if (now < it) "in ${Durations.humanize(it - now)}" else "already active")
+            }
+            voucher.expiresAt?.let {
+                add("expires" to if (now < it) "in ${Durations.humanize(it - now)}" else "expired")
+            }
+            voucher.item?.let { item ->
+                add("item" to (item.material?.name ?: item.nexoItem ?: item.iaItem ?: item.ceItem ?: "PAPER"))
+            }
+            voucher.effects?.let { fx ->
+                val parts = listOfNotNull(
+                    if (fx.fireworks > 0) "${fx.fireworks} firework(s)" else null,
+                    fx.particle?.let { "${it.name} (${fx.shape.name.lowercase()})" },
+                )
+                add("effects" to parts.joinToString(", "))
+            }
+            if (voucher.requirements.isNotEmpty()) {
+                add("requirements" to voucher.requirements.joinToString(", ") { it.type })
+            }
+            add("global uses" to plugin.usageService.globalUses(voucher.id).toString())
+        }
+        messages.send(sender, "info-header", Placeholder.parsed("voucher", voucher.id))
+        for ((key, value) in lines) {
+            sender.sendMessage(
+                messages.line("info-line", Placeholder.parsed("key", key), Placeholder.parsed("value", value))
+            )
         }
         return Command.SINGLE_SUCCESS
     }

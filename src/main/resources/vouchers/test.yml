@@ -18,6 +18,11 @@ hide: false
 # cooldown: 1d
 # Optional: Vault economy price charged when the code is redeemed.
 # price: 100.0
+# Optional: celebration on redeem - fireworks and/or a particle shape.
+# effects:
+#   fireworks: 2
+#   particle: FLAME
+#   shape: helix   # burst, circle, sphere or helix
 # Optional item form - give with /code give <players> test [amount]; players redeem by right-clicking.
 # item:
 #   material: PAPER

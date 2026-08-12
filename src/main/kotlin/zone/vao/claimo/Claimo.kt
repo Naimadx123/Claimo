@@ -31,6 +31,7 @@ import zone.vao.claimo.storage.UsageStorage
 import zone.vao.claimo.update.UpdateChecker
 import zone.vao.claimo.usage.UsageService
 import zone.vao.claimo.util.Durations
+import zone.vao.claimo.voucher.PendingGiveService
 import zone.vao.claimo.voucher.Voucher
 import zone.vao.claimo.voucher.VoucherItemService
 import zone.vao.claimo.voucher.VoucherService
@@ -47,6 +48,8 @@ class Claimo : JavaPlugin(), ClaimoService {
     lateinit var voucherService: VoucherService
         private set
     lateinit var voucherItemService: VoucherItemService
+        private set
+    lateinit var pendingGiveService: PendingGiveService
         private set
     lateinit var usageService: UsageService
         private set
@@ -83,16 +86,14 @@ class Claimo : JavaPlugin(), ClaimoService {
         voucherItemService = VoucherItemService(this)
         server.pluginManager.registerEvents(voucherItemService, this)
 
+        pendingGiveService = PendingGiveService(this)
+        server.pluginManager.registerEvents(pendingGiveService, this)
+
         voucherMenu = VoucherMenu(this)
         server.pluginManager.registerEvents(voucherMenu, this)
 
         reload()
 
-        voucherCreator = createDialogCreatorIfSupported()
-        (voucherCreator as? Listener)?.let { server.pluginManager.registerEvents(it, this) }
-
-        codePrompt = createCodePromptIfSupported()
-        (codePrompt as? Listener)?.let { server.pluginManager.registerEvents(it, this) }
         voucherCreator = createDialogComponent("zone.vao.claimo.creator.DialogVoucherCreator", "the in-game code creator")
         codePrompt = createDialogComponent("zone.vao.claimo.prompt.DialogCodePrompt", "the code input dialog")
         priceConfirm = createDialogComponent("zone.vao.claimo.prompt.DialogPriceConfirm", "the price confirmation dialog")
@@ -280,7 +281,6 @@ class Claimo : JavaPlugin(), ClaimoService {
             .flatMap { it.getStringList("whitelist") + it.getStringList("blacklist") }
             .mapNotNullTo(HashSet()) { Material.matchMaterial(it.trim()) }
 
-    private fun createDialogCreatorIfSupported(): VoucherCreator? {
     @Suppress("UNCHECKED_CAST")
     private fun <T> createDialogComponent(className: String, feature: String): T? {
         val supported = runCatching { Class.forName("io.papermc.paper.dialog.Dialog") }.isSuccess
@@ -289,9 +289,6 @@ class Claimo : JavaPlugin(), ClaimoService {
             return null
         }
         return runCatching {
-            Class.forName("zone.vao.claimo.creator.DialogVoucherCreator")
-                .getConstructor(Claimo::class.java)
-                .newInstance(this) as VoucherCreator
             val component = Class.forName(className).getConstructor(Claimo::class.java).newInstance(this)
             (component as? Listener)?.let { server.pluginManager.registerEvents(it, this) }
             component as T
