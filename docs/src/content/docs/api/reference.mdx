@@ -6,7 +6,8 @@ description: The ClaimoApi surface — registration, stats, vouchers and redeemi
 import { Aside } from '@astrojs/starlight/components';
 
 The entry point is **`zone.vao.claimo.ClaimoApi`**. It exposes requirement registration,
-read-only stats, voucher lookup, and a programmatic redeem flow.
+reward actions, read-only stats, usage and cooldown data, voucher items, programmatic
+voucher management, and a redeem flow that reports its outcome.
 
 ## `ClaimoApi`
 
@@ -20,7 +21,53 @@ read-only stats, voucher lookup, and a programmatic redeem flow.
 | `vouchers()` | List loaded vouchers. |
 | `voucher(id)` | Look one voucher up by id. |
 | `redeem(player, voucherId)` | Run the full redeem flow programmatically. |
+| `redeemWithResult(player, voucherId)` | Like `redeem`, but returns a `CompletableFuture<RedeemResult>` with the outcome. |
+| `globalUses(voucherId)` | Total redemptions of a code across all players. |
+| `playerUses(player, voucherId)` | A player's redemptions of a code. |
+| `cooldownRemaining(player, voucherId)` | Milliseconds until the player may redeem again (0 = ready). |
+| `clearCooldown(player, voucherId)` | Drop a player's stored cooldown for a code. |
+| `buildVoucherItem(voucherId, amount)` | Build the code's `ItemStack` form, or null without an `item` section. |
+| `giveVoucherItem(player, voucherId, amount)` | Hand the item form to an online player. |
+| `queueVoucherItem(playerName, voucherId, amount)` | Give now if online, otherwise deliver on next join. |
+| `createVoucher(id, settings)` | Write a new voucher file from a map of yaml keys and reload. |
+| `deleteVoucher(id)` | Delete a voucher file and reload. |
+| `generateCodes(templateId, amount)` | Clone a code into hidden one-time copies; returns the new ids. |
+| `registerRewardAction(name, action)` | Register a custom reward run by `action:<name>` cmd lines. |
+| `unregisterRewardAction(name)` | Remove a registered reward action. |
 | `reload()` | Reload config and voucher files. |
+
+## Redeem outcomes
+
+`redeemWithResult` completes with a `RedeemResult` once the (possibly async) flow ends:
+`SUCCESS`, `NOT_FOUND`, `EXPIRED`, `NOT_STARTED`, `ON_COOLDOWN`, `LIMIT_REACHED`,
+`CANNOT_AFFORD`, `PAYMENT_UNAVAILABLE`, `AWAITING_CONFIRMATION`, `REQUIREMENTS_NOT_MET`,
+`CANCELLED` or `PLAYER_OFFLINE`.
+
+<Aside type="note" title="No double messaging">
+	For every outcome except `SUCCESS` and `AWAITING_CONFIRMATION`, Claimo has already sent
+	the player the matching message — your addon doesn't need to.
+</Aside>
+
+## Reward actions
+
+A registered reward action turns a voucher `cmd` line into a callback instead of a
+dispatched command — rewards that aren't commands at all:
+
+```kotlin
+ClaimoApi.registerRewardAction("discord-role") { player, args ->
+    discord.assignRole(player.uniqueId, args)
+}
+```
+
+```yaml title="vouchers/vip.yml"
+cmd:
+  - "give %player% diamond 3"        # still a normal command
+  - "action:discord-role vip"        # runs the addon callback with args "vip"
+```
+
+The action runs on the redeeming player's scheduler thread (Folia-safe); `%player%` and
+PlaceholderAPI placeholders in the line are resolved before your callback sees `args`.
+An unknown action name logs a console warning and is skipped.
 
 ## `ClaimoStats`
 
