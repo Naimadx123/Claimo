@@ -301,7 +301,7 @@ object VoucherCommand {
         }
         val list = runCatching { plugin.configManager.generateCodes(safeId, amount) }
             .onFailure { plugin.logger.warning("Failed to generate codes from '$safeId': ${it.message}") }
-            .getOrNull()
+            .getOrNull()?.first
         if (list == null) {
             messages.send(sender, "creator-failed")
             return Command.SINGLE_SUCCESS

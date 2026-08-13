@@ -154,7 +154,7 @@ class ConfigManager(private val plugin: JavaPlugin) {
         File(File(plugin.dataFolder, VOUCHERS_DIR), "$safeId.yml").delete()
 
 
-    fun generateCodes(templateId: String, amount: Int): File? {
+    fun generateCodes(templateId: String, amount: Int): Pair<File, List<String>>? {
         val template = readVoucher(templateId) ?: return null
         template.set("hide", true)
         template.set("limit.mode", "global")
@@ -177,7 +177,7 @@ class ConfigManager(private val plugin: JavaPlugin) {
         out.mkdirs()
         val list = File(out, "$templateId-${System.currentTimeMillis()}.txt")
         list.writeText(codes.joinToString(System.lineSeparator()))
-        return list
+        return list to codes
     }
 
     private fun loadVouchers(): Map<String, Voucher> {
