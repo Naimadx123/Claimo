@@ -23,6 +23,7 @@ import zone.vao.claimo.requirement.builtin.MessagesSentRequirement
 import zone.vao.claimo.requirement.builtin.PermissionRequirement
 import zone.vao.claimo.requirement.builtin.PlaytimeRequirement
 import zone.vao.claimo.requirement.builtin.RankRequirement
+import zone.vao.claimo.reward.RewardAction
 import zone.vao.claimo.stats.ClaimoStats
 import zone.vao.claimo.stats.MessagePolicy
 import zone.vao.claimo.stats.StatsService
@@ -32,9 +33,11 @@ import zone.vao.claimo.update.UpdateChecker
 import zone.vao.claimo.usage.UsageService
 import zone.vao.claimo.util.Durations
 import zone.vao.claimo.voucher.PendingGiveService
+import zone.vao.claimo.voucher.RedeemResult
 import zone.vao.claimo.voucher.Voucher
 import zone.vao.claimo.voucher.VoucherItemService
 import zone.vao.claimo.voucher.VoucherService
+import java.util.concurrent.CompletableFuture
 
 @Suppress("UnstableApiUsage")
 class Claimo : JavaPlugin(), ClaimoService {
@@ -141,6 +144,14 @@ class Claimo : JavaPlugin(), ClaimoService {
     override fun vouchers(): Collection<Voucher> = configManager.config.vouchers.values
     override fun voucher(id: String): Voucher? = configManager.config.vouchers[id]
     override fun redeem(player: Player, voucherId: String) = voucherService.redeem(player, voucherId)
+
+    override fun redeem(player: Player, voucherId: String) {
+        voucherService.redeem(player, voucherId)
+    }
+
+    override fun redeemWithResult(player: Player, voucherId: String): CompletableFuture<RedeemResult> =
+        voucherService.redeem(player, voucherId)
+
 
     override fun onDisable() {
         if (::updateChecker.isInitialized) updateChecker.stop()

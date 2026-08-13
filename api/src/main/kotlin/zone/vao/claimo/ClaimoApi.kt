@@ -69,6 +69,13 @@ object ClaimoApi {
         service().redeem(player, voucherId)
     }
 
+    /**
+     * Like [redeem], but reports the outcome once the (possibly async) flow finishes.
+     * See [RedeemResult] for the possible outcomes and their messaging guarantees.
+     */
+    fun redeemWithResult(player: Player, voucherId: String): CompletableFuture<RedeemResult> =
+        service().redeemWithResult(player, voucherId)
+
     /** Reloads Claimo's configuration and voucher files from disk. */
     fun reload() {
         service().reload()
