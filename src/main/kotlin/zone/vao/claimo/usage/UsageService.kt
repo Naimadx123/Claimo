@@ -44,14 +44,29 @@ class UsageService(
         LimitMode.PER_PLAYER -> playerUses(player, voucher.id) >= voucher.limitAmount
     }
 
-    fun record(player: Player, voucher: Voucher) {
+    fun tryRecord(player: Player, voucher: Voucher): Boolean {
         val uuid = player.uniqueId
-        val globalCount = global.merge(voucher.id, 1, Int::plus) ?: 1
-        val playerCount = incrementPlayer(uuid, voucher.id)
-        io.execute {
-            storage.saveGlobal(voucher.id, globalCount)
-            storage.savePlayer(uuid, voucher.id, playerCount)
+        val playerMax = when (voucher.limitMode) {
+            LimitMode.NONE -> Int.MAX_VALUE
+            LimitMode.GLOBAL -> 1
+            LimitMode.PER_PLAYER -> voucher.limitAmount
         }
+        val globalMax = if (voucher.limitMode == LimitMode.GLOBAL) voucher.limitAmount else Int.MAX_VALUE
+        if (!storage.incrementPlayer(uuid, voucher.id, playerMax)) return false
+        if (!storage.incrementGlobal(voucher.id, globalMax)) {
+            storage.decrementPlayer(uuid, voucher.id)
+            return false
+        }
+        global.merge(voucher.id, 1, Int::plus)
+        incrementPlayer(uuid, voucher.id)
+        return true
+    }
+
+    fun release(player: Player, voucher: Voucher) {
+        storage.decrementGlobal(voucher.id)
+        storage.decrementPlayer(player.uniqueId, voucher.id)
+        global.merge(voucher.id, -1) { a, b -> (a + b).coerceAtLeast(0) }
+        players[player.uniqueId]?.merge(voucher.id, -1) { a, b -> (a + b).coerceAtLeast(0) }
     }
 
     fun purgeExcept(validIds: Set<String>): Set<String> {
@@ -84,8 +99,9 @@ class UsageService(
         players.remove(event.player.uniqueId)
     }
 
-    private fun incrementPlayer(uuid: UUID, voucherId: String): Int =
-        players.getOrPut(uuid) { ConcurrentHashMap() }.merge(voucherId, 1, Int::plus) ?: 1
+    private fun incrementPlayer(uuid: UUID, voucherId: String) {
+        players.getOrPut(uuid) { ConcurrentHashMap() }.merge(voucherId, 1, Int::plus)
+    }
 
     private fun loadPlayer(uuid: UUID): MutableMap<String, Int> =
         ConcurrentHashMap<String, Int>().apply { putAll(storage.loadPlayer(uuid)) }

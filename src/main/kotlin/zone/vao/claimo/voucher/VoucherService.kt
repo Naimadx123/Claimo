@@ -145,13 +145,19 @@ class VoucherService(private val plugin: Claimo) {
             return
         }
 
+        if (!plugin.usageService.tryRecord(player, voucher)) {
+            sendLimitMessage(player, voucher)
+            result.complete(RedeemResult.LIMIT_REACHED)
+            return
+        }
+
         chargePrice(player, voucher)?.let {
+            plugin.usageService.release(player, voucher)
             result.complete(it)
             return
         }
 
         execute(player, voucher)
-        plugin.usageService.record(player, voucher)
         if (voucher.cooldownMillis != null) {
             player.persistentDataContainer.set(cooldownKey(voucher.id), PersistentDataType.LONG, System.currentTimeMillis())
         }
@@ -167,7 +173,8 @@ class VoucherService(private val plugin: Claimo) {
 
     private fun sendLimitMessage(player: Player, voucher: Voucher) {
         val poolDepleted = voucher.limitMode == LimitMode.GLOBAL &&
-            plugin.usageService.globalUses(voucher.id) >= voucher.limitAmount
+            (plugin.usageService.globalUses(voucher.id) >= voucher.limitAmount ||
+                plugin.usageService.playerUses(player, voucher.id) == 0)
         val key = if (poolDepleted) "code-depleted" else "already-used"
         plugin.configManager.config.messages.send(player, key, Placeholder.parsed("voucher", voucher.id))
     }

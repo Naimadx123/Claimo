@@ -23,13 +23,34 @@ class YamlUsageStorage(private val file: File) : UsageStorage {
         readSection("players.$uuid")
     }
 
-    override fun saveGlobal(voucherId: String, uses: Int): Unit = synchronized(lock) {
-        yaml.set("global.$voucherId", uses)
-        persist()
+    override fun incrementGlobal(voucherId: String, max: Int): Boolean = synchronized(lock) {
+        incrementIfBelow("global.$voucherId", max)
     }
 
-    override fun savePlayer(uuid: UUID, voucherId: String, uses: Int): Unit = synchronized(lock) {
-        yaml.set("players.$uuid.$voucherId", uses)
+    override fun incrementPlayer(uuid: UUID, voucherId: String, max: Int): Boolean = synchronized(lock) {
+        incrementIfBelow("players.$uuid.$voucherId", max)
+    }
+
+    override fun decrementGlobal(voucherId: String): Unit = synchronized(lock) {
+        decrement("global.$voucherId")
+    }
+
+    override fun decrementPlayer(uuid: UUID, voucherId: String): Unit = synchronized(lock) {
+        decrement("players.$uuid.$voucherId")
+    }
+
+    private fun incrementIfBelow(path: String, max: Int): Boolean {
+        val current = yaml.getInt(path, 0)
+        if (current >= max) return false
+        yaml.set(path, current + 1)
+        persist()
+        return true
+    }
+
+    private fun decrement(path: String) {
+        val current = yaml.getInt(path, 0)
+        if (current <= 0) return
+        yaml.set(path, current - 1)
         persist()
     }
 
