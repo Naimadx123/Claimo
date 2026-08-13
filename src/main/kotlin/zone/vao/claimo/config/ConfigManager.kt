@@ -9,6 +9,7 @@ import org.bukkit.configuration.ConfigurationSection
 import org.bukkit.configuration.file.YamlConfiguration
 import org.bukkit.plugin.java.JavaPlugin
 import zone.vao.claimo.requirement.RequirementConfig
+import zone.vao.claimo.requirement.builtin.GroupRequirement
 import zone.vao.claimo.storage.StorageConfig
 import zone.vao.claimo.storage.StorageType
 import zone.vao.claimo.update.UpdateConfig
@@ -408,12 +409,9 @@ class ConfigManager(private val plugin: JavaPlugin) {
     private fun parseRequirements(voucherId: String, list: List<Map<*, *>>): List<RequirementConfig> =
         list.mapNotNull { entry ->
             val data = entry.entries.associate { (k, v) -> k.toString() to v }
-            val type = data["type"]?.toString()
-            if (type.isNullOrBlank()) {
-                plugin.logger.warning("Voucher '$voucherId' has a requirement without a 'type'; skipping it.")
+            GroupRequirement.fromMap(data) ?: run {
+                plugin.logger.warning("Voucher '$voucherId' has a requirement without a 'type' or group key; skipping it.")
                 null
-            } else {
-                RequirementConfig(type, data)
             }
         }
 

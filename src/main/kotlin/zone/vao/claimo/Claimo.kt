@@ -20,6 +20,7 @@ import zone.vao.claimo.requirement.RequirementRegistry
 import zone.vao.claimo.requirement.builtin.AccountAgeRequirement
 import zone.vao.claimo.requirement.builtin.BlocksMinedRequirement
 import zone.vao.claimo.requirement.builtin.CustomRequirement
+import zone.vao.claimo.requirement.builtin.GroupRequirement
 import zone.vao.claimo.requirement.builtin.MessagesSentRequirement
 import zone.vao.claimo.requirement.builtin.PermissionRequirement
 import zone.vao.claimo.requirement.builtin.PlaytimeRequirement
@@ -136,9 +137,18 @@ class Claimo : JavaPlugin(), ClaimoService {
 
     private fun messagePolicies(): Set<MessagePolicy> =
         configManager.config.vouchers.values
-            .flatMap { it.requirements }
+            .flatMap { expandRequirements(it.requirements) }
             .filter { it.type.equals("messages_sent", ignoreCase = true) }
             .mapTo(HashSet()) { MessagePolicy.from(it) }
+
+    private fun expandRequirements(configs: List<RequirementConfig>): List<RequirementConfig> =
+        configs.flatMap { cfg ->
+            if (cfg.type.lowercase() in GroupRequirement.MODES) {
+                expandRequirements(GroupRequirement.toConfigs(cfg.getMapList("requirements")))
+            } else {
+                listOf(cfg)
+            }
+        }
 
     override val requirements: RequirementRegistry get() = requirementRegistry
     override val stats: ClaimoStats get() = statsService
@@ -317,6 +327,16 @@ class Claimo : JavaPlugin(), ClaimoService {
                 RequirementInput.TextInput("denied-ranks", "Forbidden ranks (comma-separated)"),
             ),
         )
+        for (mode in GroupRequirement.Mode.entries) {
+            requirementRegistry.register(mode.name.lowercase(), { cfg ->
+                GroupRequirement(
+                    configManager.config.messages,
+                    mode,
+                    GroupRequirement.toConfigs(cfg.getMapList("requirements")),
+                    requirementRegistry,
+                )
+            })
+        }
         requirementRegistry.register(
             "custom",
             { cfg ->
@@ -356,7 +376,7 @@ class Claimo : JavaPlugin(), ClaimoService {
 
     private fun trackedBlockMaterials(): Set<Material> =
         configManager.config.vouchers.values
-            .flatMap { it.requirements }
+            .flatMap { expandRequirements(it.requirements) }
             .filter { it.type.equals("blocks_mined", ignoreCase = true) }
             .flatMap { it.getStringList("whitelist") + it.getStringList("blacklist") }
             .mapNotNullTo(HashSet()) { Material.matchMaterial(it.trim()) }

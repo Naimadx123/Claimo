@@ -21,6 +21,7 @@ import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 import zone.vao.claimo.Claimo
 import zone.vao.claimo.requirement.RequirementInput
+import zone.vao.claimo.requirement.builtin.GroupRequirement
 import zone.vao.claimo.util.Durations
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
@@ -150,6 +151,7 @@ class DialogVoucherCreator(private val plugin: Claimo) : VoucherCreator, Listene
 
     private fun newDraft(): Draft {
         val specs = plugin.requirementRegistry.types().sorted()
+            .filterNot { it in GroupRequirement.MODES }
             .map { TypeSpec(it, plugin.requirementRegistry.inputs(it)) }
         return Draft(specs.chunked(REQUIREMENTS_PER_PAGE))
     }

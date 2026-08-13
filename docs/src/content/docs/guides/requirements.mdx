@@ -195,6 +195,35 @@ requirement-custom: "<placeholder_pretty>: <placeholder_parsed> (need <operator>
 	up correctly instead of being read as MiniMessage tags.
 </Aside>
 
+## Logical groups: `any`, `all`, `not`
+
+By default every entry in `requirements:` must pass. Group entries let you express OR and
+NOT logic — a group counts as a single requirement whose children decide its outcome:
+
+- `any:` — satisfied when **at least one** child passes.
+- `all:` — satisfied when **every** child passes (useful inside `any`).
+- `not:` — satisfied when **no** child passes.
+
+```yaml title="(VIP or Premium) and 2h of playtime"
+requirements:
+  - any:
+      - type: permission
+        permission: claimo.vip
+      - type: rank
+        rank: premium
+  - type: playtime
+    duration: 2h
+```
+
+Groups nest freely — an `any` can contain an `all`, and so on. In the redeem checklist a
+group prints as one line built from the `requirement-group-any` / `-all` / `-not` message,
+with `<requirements>` holding the children's descriptions.
+
+<Aside type="note" title="File-only">
+	Groups are configured in voucher files; the in-game creator edits flat requirements
+	only and leaves existing groups untouched.
+</Aside>
+
 ## The redeem checklist
 
 When a redeem fails, the whole requirement checklist is printed. Met lines use the

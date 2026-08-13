@@ -40,6 +40,15 @@ class RequirementConfig(
         else -> listOf(value.toString())
     }
 
+    /**
+     * Returns the list of maps at [key], or an empty list when the value is missing or
+     * not a list. Grouping requirements use this to read their nested entries.
+     */
+    fun getMapList(key: String): List<Map<String, Any?>> =
+        (data[key] as? List<*>)?.mapNotNull { entry ->
+            (entry as? Map<*, *>)?.entries?.associate { (k, v) -> k.toString() to v }
+        } ?: emptyList()
+
     /** Whether [key] is present in this requirement's config. */
     fun has(key: String): Boolean = data.containsKey(key)
 
