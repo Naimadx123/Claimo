@@ -1,6 +1,7 @@
 package zone.vao.claimo.voucher
 
 import zone.vao.claimo.requirement.RequirementConfig
+import zone.vao.claimo.requirement.RequirementGroups
 
 data class Voucher(
     val id: String,
@@ -30,4 +31,7 @@ data class Voucher(
 
     fun isAvailable(now: Long = System.currentTimeMillis()): Boolean =
         !disabled && !isExpired(now) && !isNotStarted(now)
+
+    /** Requirements flattened: group entries (any/all/not) are replaced by their children, recursively. */
+    fun flattenedRequirements(): List<RequirementConfig> = RequirementGroups.flatten(requirements)
 }

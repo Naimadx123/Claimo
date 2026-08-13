@@ -53,19 +53,4 @@ class GroupRequirement(
         }
     }
 
-    companion object {
-        val MODES: Set<String> = Mode.entries.mapTo(HashSet()) { it.name.lowercase() }
-
-        fun fromMap(data: Map<String, Any?>): RequirementConfig? {
-            val type = data["type"]?.toString()
-            if (!type.isNullOrBlank()) return RequirementConfig(type, data)
-            for (mode in MODES) {
-                if (data[mode] is List<*>) return RequirementConfig(mode, mapOf("requirements" to data[mode]))
-            }
-            return null
-        }
-
-        fun toConfigs(entries: List<Map<String, Any?>>): List<RequirementConfig> =
-            entries.mapNotNull(::fromMap)
-    }
 }
