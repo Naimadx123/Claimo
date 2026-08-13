@@ -8,6 +8,7 @@ class SqlUsageStorage(hikariConfig: HikariConfig, tablePrefix: String) : UsageSt
 
     private val globalTable = "${tablePrefix}global_usage"
     private val playerTable = "${tablePrefix}player_usage"
+    private val historyTable = "${tablePrefix}history"
     private val dataSource = HikariDataSource(hikariConfig)
 
     init {
@@ -21,6 +22,11 @@ class SqlUsageStorage(hikariConfig: HikariConfig, tablePrefix: String) : UsageSt
                     "CREATE TABLE IF NOT EXISTS $playerTable " +
                         "(uuid VARCHAR(36) NOT NULL, voucher_id VARCHAR(64) NOT NULL, uses INT NOT NULL, " +
                         "PRIMARY KEY (uuid, voucher_id))"
+                )
+                st.executeUpdate(
+                    "CREATE TABLE IF NOT EXISTS $historyTable " +
+                        "(voucher_id VARCHAR(64) NOT NULL, uuid VARCHAR(36) NOT NULL, " +
+                        "player VARCHAR(16) NOT NULL, ts BIGINT NOT NULL, price DOUBLE PRECISION NOT NULL)"
                 )
             }
         }
@@ -116,9 +122,63 @@ class SqlUsageStorage(hikariConfig: HikariConfig, tablePrefix: String) : UsageSt
         return false
     }
 
+    override fun recordHistory(entry: RedeemHistoryEntry) {
+        dataSource.connection.use { conn ->
+            conn.prepareStatement(
+                "INSERT INTO $historyTable (voucher_id, uuid, player, ts, price) VALUES (?, ?, ?, ?, ?)"
+            ).use { ps ->
+                ps.setString(1, entry.voucherId)
+                ps.setString(2, entry.uuid.toString())
+                ps.setString(3, entry.playerName)
+                ps.setLong(4, entry.timestamp)
+                ps.setDouble(5, entry.price)
+                ps.executeUpdate()
+            }
+        }
+    }
+
+    override fun voucherHistory(voucherId: String, limit: Int): List<RedeemHistoryEntry> =
+        queryHistory("voucher_id", voucherId, limit)
+
+    override fun playerHistory(uuid: UUID, limit: Int): List<RedeemHistoryEntry> =
+        queryHistory("uuid", uuid.toString(), limit)
+
+    override fun uniquePlayers(voucherId: String): Int {
+        dataSource.connection.use { conn ->
+            conn.prepareStatement("SELECT COUNT(*) FROM $playerTable WHERE voucher_id = ? AND uses > 0").use { ps ->
+                ps.setString(1, voucherId)
+                ps.executeQuery().use { rs -> return if (rs.next()) rs.getInt(1) else 0 }
+            }
+        }
+    }
+
+    private fun queryHistory(column: String, value: String, limit: Int): List<RedeemHistoryEntry> {
+        val result = ArrayList<RedeemHistoryEntry>()
+        dataSource.connection.use { conn ->
+            conn.prepareStatement(
+                "SELECT voucher_id, uuid, player, ts, price FROM $historyTable WHERE $column = ? ORDER BY ts DESC LIMIT ?"
+            ).use { ps ->
+                ps.setString(1, value)
+                ps.setInt(2, limit)
+                ps.executeQuery().use { rs ->
+                    while (rs.next()) {
+                        result += RedeemHistoryEntry(
+                            voucherId = rs.getString(1),
+                            uuid = UUID.fromString(rs.getString(2)),
+                            playerName = rs.getString(3),
+                            timestamp = rs.getLong(4),
+                            price = rs.getDouble(5),
+                        )
+                    }
+                }
+            }
+        }
+        return result
+    }
+
     override fun deleteVoucher(voucherId: String) {
         dataSource.connection.use { conn ->
-            for (table in arrayOf(globalTable, playerTable)) {
+            for (table in arrayOf(globalTable, playerTable, historyTable)) {
                 conn.prepareStatement("DELETE FROM $table WHERE voucher_id = ?").use { ps ->
                     ps.setString(1, voucherId)
                     ps.executeUpdate()

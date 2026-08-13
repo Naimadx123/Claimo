@@ -7,6 +7,7 @@ import org.bukkit.event.Listener
 import org.bukkit.event.player.AsyncPlayerPreLoginEvent
 import org.bukkit.event.player.PlayerQuitEvent
 import org.bukkit.plugin.java.JavaPlugin
+import zone.vao.claimo.storage.RedeemHistoryEntry
 import zone.vao.claimo.storage.UsageStorage
 import zone.vao.claimo.voucher.LimitMode
 import zone.vao.claimo.voucher.Voucher
@@ -61,6 +62,25 @@ class UsageService(
         incrementPlayer(uuid, voucher.id)
         return true
     }
+
+    fun recordHistory(player: Player, voucher: Voucher) {
+        val entry = RedeemHistoryEntry(
+            voucherId = voucher.id,
+            uuid = player.uniqueId,
+            playerName = player.name,
+            timestamp = System.currentTimeMillis(),
+            price = voucher.price,
+        )
+        io.execute { storage.recordHistory(entry) }
+    }
+
+    fun voucherHistory(voucherId: String, limit: Int): List<RedeemHistoryEntry> =
+        storage.voucherHistory(voucherId, limit)
+
+    fun playerHistory(uuid: UUID, limit: Int): List<RedeemHistoryEntry> =
+        storage.playerHistory(uuid, limit)
+
+    fun uniquePlayers(voucherId: String): Int = storage.uniquePlayers(voucherId)
 
     fun release(player: Player, voucher: Voucher) {
         storage.decrementGlobal(voucher.id)

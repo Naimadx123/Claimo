@@ -22,6 +22,14 @@ interface UsageStorage {
 
     fun decrementPlayer(uuid: UUID, voucherId: String)
 
+    fun recordHistory(entry: RedeemHistoryEntry)
+
+    fun voucherHistory(voucherId: String, limit: Int): List<RedeemHistoryEntry>
+
+    fun playerHistory(uuid: UUID, limit: Int): List<RedeemHistoryEntry>
+
+    fun uniquePlayers(voucherId: String): Int
+
     fun deleteVoucher(voucherId: String)
 
     fun close()

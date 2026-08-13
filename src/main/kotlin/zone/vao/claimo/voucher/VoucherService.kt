@@ -163,6 +163,7 @@ class VoucherService(private val plugin: Claimo) {
         }
 
         execute(player, voucher)
+        plugin.usageService.recordHistory(player, voucher)
         if (voucher.cooldownMillis != null) {
             player.persistentDataContainer.set(cooldownKey(voucher.id), PersistentDataType.LONG, System.currentTimeMillis())
         }

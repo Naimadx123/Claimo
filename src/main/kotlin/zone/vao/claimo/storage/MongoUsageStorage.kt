@@ -18,11 +18,13 @@ class MongoUsageStorage(
     private val client: MongoClient = MongoClients.create(connectionString)
     private val global: MongoCollection<Document>
     private val players: MongoCollection<Document>
+    private val history: MongoCollection<Document>
 
     init {
         val database = client.getDatabase(databaseName)
         global = database.getCollection("${collectionPrefix}global_usage")
         players = database.getCollection("${collectionPrefix}player_usage")
+        history = database.getCollection("${collectionPrefix}history")
     }
 
     override fun loadGlobal(): Map<String, Int> {
@@ -81,9 +83,42 @@ class MongoUsageStorage(
         )
     }
 
+    override fun recordHistory(entry: RedeemHistoryEntry) {
+        history.insertOne(
+            Document("voucher_id", entry.voucherId)
+                .append("uuid", entry.uuid.toString())
+                .append("player", entry.playerName)
+                .append("ts", entry.timestamp)
+                .append("price", entry.price),
+        )
+    }
+
+    override fun voucherHistory(voucherId: String, limit: Int): List<RedeemHistoryEntry> =
+        queryHistory(Filters.eq("voucher_id", voucherId), limit)
+
+    override fun playerHistory(uuid: UUID, limit: Int): List<RedeemHistoryEntry> =
+        queryHistory(Filters.eq("uuid", uuid.toString()), limit)
+
+    override fun uniquePlayers(voucherId: String): Int =
+        players.countDocuments(Filters.and(Filters.eq("voucher_id", voucherId), Filters.gt("uses", 0))).toInt()
+
+    private fun queryHistory(filter: Bson, limit: Int): List<RedeemHistoryEntry> =
+        history.find(filter).sort(Document("ts", -1)).limit(limit).mapNotNull { doc ->
+            runCatching {
+                RedeemHistoryEntry(
+                    voucherId = doc.getString("voucher_id"),
+                    uuid = UUID.fromString(doc.getString("uuid")),
+                    playerName = doc.getString("player"),
+                    timestamp = doc.getLong("ts"),
+                    price = doc.getDouble("price") ?: 0.0,
+                )
+            }.getOrNull()
+        }
+
     override fun deleteVoucher(voucherId: String) {
         global.deleteOne(Filters.eq("_id", voucherId))
         players.deleteMany(Filters.eq("voucher_id", voucherId))
+        history.deleteMany(Filters.eq("voucher_id", voucherId))
     }
 
     override fun close() {

@@ -18,6 +18,10 @@ import zone.vao.claimo.creator.VoucherCreator
 import zone.vao.claimo.util.Durations
 import zone.vao.claimo.voucher.LimitMode
 import java.io.File
+import java.time.Instant
+import java.time.LocalDateTime
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import java.util.concurrent.ConcurrentHashMap
 
 @Suppress("UnstableApiUsage")
@@ -510,6 +514,9 @@ object VoucherCommand {
         }
         return Command.SINGLE_SUCCESS
     }
+
+    private fun formatTime(timestamp: Long): String =
+        LocalDateTime.ofInstant(Instant.ofEpochMilli(timestamp), ZoneId.systemDefault()).format(TIME_FORMAT)
 
     private fun generateCodes(plugin: Claimo, ctx: CommandContext<CommandSourceStack>): Int {
         val messages = plugin.configManager.config.messages

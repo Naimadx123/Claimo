@@ -5,8 +5,10 @@ description: Where Claimo persists redemption counts — from zero-setup YAML to
 
 import { Aside, Badge, Tabs, TabItem, CardGrid, Card } from '@astrojs/starlight/components';
 
-Claimo stores **redemption counts** — global pools and per-player usage — in a backend you
-choose under `storage:` in `config.yml`.
+Claimo stores **redemption counts** — global pools and per-player usage — plus a **redeem
+history** (who redeemed what, when, at what price, powering `/code history` and
+`/code stats`) in a backend you choose under `storage:` in `config.yml`. The YAML backend
+caps the history at its 1000 most recent entries; the database backends keep everything.
 
 <Aside type="caution" title="Restart required">
 	Changing `storage.type` requires a **server restart**, not just `/code reload`.
