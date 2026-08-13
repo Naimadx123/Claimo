@@ -17,6 +17,9 @@ enum class RedeemResult {
     /** The voucher's `expires` moment has passed. */
     EXPIRED,
 
+    /** The voucher was disabled by an admin, for example through `/code campaign disable`. */
+    DISABLED,
+
     /** The voucher's `starts` moment hasn't been reached yet. */
     NOT_STARTED,
 

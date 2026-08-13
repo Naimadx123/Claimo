@@ -19,6 +19,8 @@ data class Voucher(
     val commandChances: List<Double> = emptyList(),
     val price: Double = 0.0,
     val effects: VoucherEffects? = null,
+    val campaign: String? = null,
+    val disabled: Boolean = false,
 ) {
     fun isExpired(now: Long = System.currentTimeMillis()): Boolean =
         expiresAt != null && now >= expiresAt
@@ -27,5 +29,5 @@ data class Voucher(
         startsAt != null && now < startsAt
 
     fun isAvailable(now: Long = System.currentTimeMillis()): Boolean =
-        !isExpired(now) && !isNotStarted(now)
+        !disabled && !isExpired(now) && !isNotStarted(now)
 }

@@ -39,6 +39,11 @@ class VoucherService(private val plugin: Claimo) {
             return result.apply { complete(RedeemResult.NOT_FOUND) }
         }
 
+        if (voucher.disabled) {
+            messages.send(player, "code-disabled", Placeholder.parsed("voucher", voucherId))
+            return result.apply { complete(RedeemResult.DISABLED) }
+        }
+
         if (voucher.isExpired()) {
             messages.send(player, "code-expired", Placeholder.parsed("voucher", voucherId))
             return result.apply { complete(RedeemResult.EXPIRED) }

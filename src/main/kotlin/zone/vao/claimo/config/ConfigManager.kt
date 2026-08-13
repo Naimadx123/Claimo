@@ -162,6 +162,7 @@ class ConfigManager(private val plugin: JavaPlugin) {
         template.set("limit.amount", 1)
         template.set("redeem-command", null)
         template.set("created", System.currentTimeMillis())
+        template.set("campaign", templateId)
 
         val dir = File(plugin.dataFolder, VOUCHERS_DIR)
         val codes = ArrayList<String>(amount)
@@ -258,6 +259,8 @@ class ConfigManager(private val plugin: JavaPlugin) {
             commandChances = chances,
             price = section.getDouble("price", 0.0).coerceAtLeast(0.0),
             effects = parseEffects(id, section.getConfigurationSection("effects")),
+            campaign = section.getString("campaign")?.trim()?.ifEmpty { null },
+            disabled = section.getBoolean("disabled", false),
         )
     }
 
