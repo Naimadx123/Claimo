@@ -575,6 +575,9 @@ object VoucherCommand {
                     }
             )
 
+    private const val HISTORY_LIMIT = 10
+    private val TIME_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
+
     private val adminLiterals: MutableSet<String> = ConcurrentHashMap.newKeySet()
 
     val adminSubcommands: Set<String> get() = adminLiterals

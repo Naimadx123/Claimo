@@ -21,6 +21,13 @@ the GUI, and admin management — hangs off it.
 | `/<command> giveoffline <player> <voucher> [amount]` | Give a voucher item to an offline player — queued and delivered on their next join | `claimo.admin` |
 | `/<command> info <voucher>` | Print a code's full configuration and its global use count | `claimo.admin` |
 | `/<command> generate <voucher> <amount>` | Generate hidden one-time copies of a code (max 500 per run) | `claimo.admin` |
+| `/<command> campaign create <voucher> <amount>` | Same as `generate` — the batch becomes a campaign named after the template | `claimo.admin` |
+| `/<command> campaign info <campaign>` | Show a campaign's code counts: total, redeemed, disabled, remaining | `claimo.admin` |
+| `/<command> campaign disable <campaign>` | Invalidate all remaining codes in a campaign | `claimo.admin` |
+| `/<command> campaign export <campaign>` | Save the still-unused codes to a text file | `claimo.admin` |
+| `/<command> campaign delete <campaign>` | Delete all of a campaign's codes and purge their usage | `claimo.admin` |
+| `/<command> stats <voucher>` | Uses, unique players, revenue and last redeem of a code | `claimo.admin` |
+| `/<command> history <code \| player>` | Last 10 redeems of a code or by a player | `claimo.admin` |
 | `/<command> reload` | Reload config and voucher files | `claimo.admin` |
 | `/<command> purge` | Drop stored usage for codes whose config was deleted | `claimo.admin` |
 
@@ -69,6 +76,16 @@ command: kod
   (`limit: global 1`) copies named `<voucher>-x7k2q9` and saves the full list to
   `plugins/Claimo/generated/<voucher>-<timestamp>.txt` — hand those out on Discord, in a
   store, etc. Expiry (`expires`) is re-counted from the moment of generation.
+
+- Every generated code carries a `campaign:` key named after its template, which the
+  `campaign` subcommands operate on: run a 500-code giveaway, watch `campaign info` for
+  progress, then `campaign disable` to void whatever leaked or `campaign delete` to clean
+  up entirely. Disabled codes answer with the `code-disabled` message and disappear from
+  the GUI. Generating from the same template twice extends the same campaign.
+
+- `/<command> history` and `/<command> stats` read the redeem history that Claimo records
+  in its storage backend (who, when, at what price). The argument to `history` is tried as
+  a code id first and as a player name second.
 
 <Aside type="tip">
 	From the console, the bare command prints usage instead of opening a GUI (there's no
