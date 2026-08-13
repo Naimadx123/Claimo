@@ -13,6 +13,7 @@ import zone.vao.claimo.event.PlayerRedeemVoucherEvent
 import zone.vao.claimo.event.VoucherRedeemedEvent
 import zone.vao.claimo.requirement.RequirementContext
 import zone.vao.claimo.requirement.RequirementResult
+import zone.vao.claimo.reward.RewardAction
 import java.util.UUID
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
@@ -20,20 +21,27 @@ import java.util.concurrent.ConcurrentHashMap
 class VoucherService(private val plugin: Claimo) {
 
     private val pendingConfirms = ConcurrentHashMap<UUID, Pair<String, Long>>()
+    private val rewardActions = ConcurrentHashMap<String, RewardAction>()
 
-    fun redeem(player: Player, voucherId: String, confirmed: Boolean = false, onSuccess: (() -> Unit)? = null) {
+    fun redeem(
+        player: Player,
+        voucherId: String,
+        confirmed: Boolean = false,
+        onSuccess: (() -> Unit)? = null,
+    ): CompletableFuture<RedeemResult> {
+        val result = CompletableFuture<RedeemResult>()
         val config = plugin.configManager.config
         val messages = config.messages
 
         val voucher = config.vouchers[voucherId]
         if (voucher == null) {
             messages.send(player, "no-such-voucher", Placeholder.parsed("voucher", voucherId))
-            return
+            return result.apply { complete(RedeemResult.NOT_FOUND) }
         }
 
         if (voucher.isExpired()) {
             messages.send(player, "code-expired", Placeholder.parsed("voucher", voucherId))
-            return
+            return result.apply { complete(RedeemResult.EXPIRED) }
         }
 
         if (voucher.isNotStarted()) {
@@ -42,7 +50,7 @@ class VoucherService(private val plugin: Claimo) {
                 Placeholder.parsed("voucher", voucherId),
                 Placeholder.parsed("remaining", Durations.humanize(voucher.startsAt!! - System.currentTimeMillis())),
             )
-            return
+            return result.apply { complete(RedeemResult.NOT_STARTED) }
         }
 
         cooldownRemaining(player, voucher)?.let { remaining ->
@@ -51,16 +59,18 @@ class VoucherService(private val plugin: Claimo) {
                 Placeholder.parsed("voucher", voucherId),
                 Placeholder.parsed("remaining", Durations.humanize(remaining)),
             )
-            return
+            return result.apply { complete(RedeemResult.ON_COOLDOWN) }
         }
 
         if (plugin.usageService.isExhausted(player, voucher)) {
             sendLimitMessage(player, voucher)
-            return
+            return result.apply { complete(RedeemResult.LIMIT_REACHED) }
         }
 
-        if (!checkPrice(player, voucher)) return
-        if (voucher.price > 0.0 && !confirmed && !confirmPrice(player, voucher, onSuccess)) return
+        checkPrice(player, voucher)?.let { return result.apply { complete(it) } }
+        if (voucher.price > 0.0 && !confirmed && !confirmPrice(player, voucher, onSuccess)) {
+            return result.apply { complete(RedeemResult.AWAITING_CONFIRMATION) }
+        }
 
         val context = RequirementContext(player, voucherId)
         val checks = voucher.requirements.map { spec ->
@@ -81,8 +91,13 @@ class VoucherService(private val plugin: Claimo) {
         }
 
         CompletableFuture.allOf(*checks.toTypedArray()).whenComplete { _, _ ->
-            player.scheduler.run(plugin, { completeRedeem(player, voucher, checks, onSuccess) }, null)
+            player.scheduler.run(
+                plugin,
+                { completeRedeem(player, voucher, checks, onSuccess, result) },
+                { result.complete(RedeemResult.PLAYER_OFFLINE) },
+            )
         }
+        return result
     }
 
     private fun completeRedeem(
@@ -90,12 +105,17 @@ class VoucherService(private val plugin: Claimo) {
         voucher: Voucher,
         checks: List<CompletableFuture<RequirementResult>>,
         onSuccess: (() -> Unit)?,
+        result: CompletableFuture<RedeemResult>,
     ) {
-        if (!player.isOnline) return
+        if (!player.isOnline) {
+            result.complete(RedeemResult.PLAYER_OFFLINE)
+            return
+        }
         val messages = plugin.configManager.config.messages
 
         if (plugin.usageService.isExhausted(player, voucher)) {
             sendLimitMessage(player, voucher)
+            result.complete(RedeemResult.LIMIT_REACHED)
             return
         }
 
@@ -105,22 +125,30 @@ class VoucherService(private val plugin: Claimo) {
                 Placeholder.parsed("voucher", voucher.id),
                 Placeholder.parsed("remaining", Durations.humanize(remaining)),
             )
+            result.complete(RedeemResult.ON_COOLDOWN)
             return
         }
 
         val results = checks.map { it.join() }
         if (results.any { !it.satisfied }) {
             messages.send(player, "requirements-not-met", Placeholder.parsed("voucher", voucher.id))
-            results.forEach { result ->
-                val key = if (result.satisfied) "requirement-met" else "requirement-unmet"
-                player.sendMessage(messages.line(key, Placeholder.component("description", result.description)))
+            results.forEach { check ->
+                val key = if (check.satisfied) "requirement-met" else "requirement-unmet"
+                player.sendMessage(messages.line(key, Placeholder.component("description", check.description)))
             }
+            result.complete(RedeemResult.REQUIREMENTS_NOT_MET)
             return
         }
 
-        if (!PlayerRedeemVoucherEvent(player, voucher).callEvent()) return
+        if (!PlayerRedeemVoucherEvent(player, voucher).callEvent()) {
+            result.complete(RedeemResult.CANCELLED)
+            return
+        }
 
-        if (!chargePrice(player, voucher)) return
+        chargePrice(player, voucher)?.let {
+            result.complete(it)
+            return
+        }
 
         execute(player, voucher)
         plugin.usageService.record(player, voucher)
@@ -134,6 +162,7 @@ class VoucherService(private val plugin: Claimo) {
         VoucherRedeemedEvent(player, voucher).callEvent()
         messages.send(player, "success", Placeholder.parsed("voucher", voucher.id))
         onSuccess?.invoke()
+        result.complete(RedeemResult.SUCCESS)
     }
 
     private fun sendLimitMessage(player: Player, voucher: Voucher) {
@@ -152,8 +181,21 @@ class VoucherService(private val plugin: Claimo) {
 
     private fun cooldownKey(voucherId: String) = NamespacedKey(plugin, "cooldown-$voucherId")
 
+    fun cooldownRemaining(player: Player, voucherId: String): Long {
+        val voucher = plugin.configManager.config.vouchers[voucherId] ?: return 0L
+        return cooldownRemaining(player, voucher) ?: 0L
+    }
+
     fun clearCooldowns(player: Player, voucherIds: Collection<String>) {
         for (id in voucherIds) player.persistentDataContainer.remove(cooldownKey(id))
+    }
+
+    fun registerRewardAction(name: String, action: RewardAction) {
+        rewardActions[name.trim().lowercase()] = action
+    }
+
+    fun unregisterRewardAction(name: String) {
+        rewardActions.remove(name.trim().lowercase())
     }
 
     private fun confirmPrice(player: Player, voucher: Voucher, onSuccess: (() -> Unit)?): Boolean {
@@ -178,14 +220,14 @@ class VoucherService(private val plugin: Claimo) {
         return false
     }
 
-    private fun checkPrice(player: Player, voucher: Voucher): Boolean {
-        if (voucher.price <= 0.0) return true
+    private fun checkPrice(player: Player, voucher: Voucher): RedeemResult? {
+        if (voucher.price <= 0.0) return null
         val messages = plugin.configManager.config.messages
         val economy = economy()
         if (economy == null) {
             plugin.logger.warning("Voucher '${voucher.id}' has a price but no Vault economy provider is installed.")
             messages.send(player, "price-unavailable", Placeholder.parsed("voucher", voucher.id))
-            return false
+            return RedeemResult.PAYMENT_UNAVAILABLE
         }
         if (!economy.has(player, voucher.price)) {
             messages.send(
@@ -193,17 +235,17 @@ class VoucherService(private val plugin: Claimo) {
                 Placeholder.parsed("voucher", voucher.id),
                 Placeholder.parsed("price", economy.format(voucher.price)),
             )
-            return false
+            return RedeemResult.CANNOT_AFFORD
         }
-        return true
+        return null
     }
 
-    private fun chargePrice(player: Player, voucher: Voucher): Boolean {
-        if (voucher.price <= 0.0) return true
+    private fun chargePrice(player: Player, voucher: Voucher): RedeemResult? {
+        if (voucher.price <= 0.0) return null
         val messages = plugin.configManager.config.messages
         val economy = economy() ?: run {
             messages.send(player, "price-unavailable", Placeholder.parsed("voucher", voucher.id))
-            return false
+            return RedeemResult.PAYMENT_UNAVAILABLE
         }
         val response = economy.withdrawPlayer(player, voucher.price)
         if (!response.transactionSuccess()) {
@@ -212,9 +254,9 @@ class VoucherService(private val plugin: Claimo) {
                 Placeholder.parsed("voucher", voucher.id),
                 Placeholder.parsed("price", economy.format(voucher.price)),
             )
-            return false
+            return RedeemResult.CANNOT_AFFORD
         }
-        return true
+        return null
     }
 
     private fun economy(): Economy? {
@@ -230,7 +272,24 @@ class VoucherService(private val plugin: Claimo) {
             var command = rawCommand.removePrefix("/").replace("%player%", player.name)
             if (papi) command = PlaceholderAPI.setPlaceholders(player, command)
             if (command.isBlank()) continue
+            if (command.startsWith("action:", ignoreCase = true)) {
+                runAction(player, voucher, command)
+                continue
+            }
             plugin.server.dispatchCommand(sender, command)
+        }
+    }
+
+    private fun runAction(player: Player, voucher: Voucher, command: String) {
+        val name = command.substringAfter(':').substringBefore(' ').trim().lowercase()
+        val args = command.substringAfter(' ', "").trim()
+        val action = rewardActions[name]
+        if (action == null) {
+            plugin.logger.warning("Voucher '${voucher.id}' uses unknown reward action '$name'.")
+            return
+        }
+        runCatching { action.execute(player, args) }.onFailure {
+            plugin.logger.warning("Reward action '$name' on voucher '${voucher.id}' threw: ${it.message}")
         }
     }
 

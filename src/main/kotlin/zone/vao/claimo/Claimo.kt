@@ -4,6 +4,7 @@ import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents
 import org.bukkit.Material
 import org.bukkit.entity.Player
 import org.bukkit.event.Listener
+import org.bukkit.inventory.ItemStack
 import org.bukkit.plugin.java.JavaPlugin
 import zone.vao.claimo.command.AdminSuggestionFilter
 import zone.vao.claimo.command.VoucherCommand
@@ -143,7 +144,6 @@ class Claimo : JavaPlugin(), ClaimoService {
     override val stats: ClaimoStats get() = statsService
     override fun vouchers(): Collection<Voucher> = configManager.config.vouchers.values
     override fun voucher(id: String): Voucher? = configManager.config.vouchers[id]
-    override fun redeem(player: Player, voucherId: String) = voucherService.redeem(player, voucherId)
 
     override fun redeem(player: Player, voucherId: String) {
         voucherService.redeem(player, voucherId)
@@ -152,6 +152,75 @@ class Claimo : JavaPlugin(), ClaimoService {
     override fun redeemWithResult(player: Player, voucherId: String): CompletableFuture<RedeemResult> =
         voucherService.redeem(player, voucherId)
 
+    override fun globalUses(voucherId: String): Int = usageService.globalUses(voucherId)
+
+    override fun playerUses(player: Player, voucherId: String): Int = usageService.playerUses(player, voucherId)
+
+    override fun cooldownRemaining(player: Player, voucherId: String): Long =
+        voucherService.cooldownRemaining(player, voucherId)
+
+    override fun clearCooldown(player: Player, voucherId: String) {
+        voucherService.clearCooldowns(player, listOf(voucherId))
+    }
+
+    override fun buildVoucherItem(voucherId: String, amount: Int): ItemStack? {
+        val voucher = configManager.config.vouchers[voucherId] ?: return null
+        return voucherItemService.build(voucher, amount)
+    }
+
+    override fun giveVoucherItem(player: Player, voucherId: String, amount: Int): Boolean {
+        val voucher = configManager.config.vouchers[voucherId] ?: return false
+        return voucherItemService.give(player, voucher, amount)
+    }
+
+    override fun queueVoucherItem(playerName: String, voucherId: String, amount: Int): Boolean {
+        val voucher = configManager.config.vouchers[voucherId]
+        if (voucher?.item == null) return false
+        val online = server.getPlayerExact(playerName)
+        if (online != null) {
+            online.scheduler.run(this, { voucherItemService.give(online, voucher, amount) }, null)
+        } else {
+            pendingGiveService.queue(playerName, voucherId, amount)
+        }
+        return true
+    }
+
+    override fun createVoucher(id: String, settings: Map<String, Any>): Boolean {
+        val safeId = configManager.sanitizeId(id) ?: return false
+        if (configManager.voucherExists(safeId)) return false
+        configManager.saveVoucher(safeId) { yaml ->
+            settings.forEach { (key, value) ->
+                if (value is Map<*, *>) yaml.createSection(key, value) else yaml.set(key, value)
+            }
+        }
+        reload()
+        return true
+    }
+
+    override fun deleteVoucher(id: String): Boolean {
+        val safeId = configManager.sanitizeId(id) ?: return false
+        if (!configManager.deleteVoucher(safeId)) return false
+        reload()
+        return true
+    }
+
+    override fun generateCodes(templateId: String, amount: Int): List<String>? {
+        val safeId = configManager.sanitizeId(templateId) ?: return null
+        if (!configManager.voucherExists(safeId)) return null
+        val generated = runCatching { configManager.generateCodes(safeId, amount.coerceIn(1, 500)) }
+            .onFailure { logger.warning("Failed to generate codes from '$safeId': ${it.message}") }
+            .getOrNull() ?: return null
+        reload()
+        return generated.second
+    }
+
+    override fun registerRewardAction(name: String, action: RewardAction) {
+        voucherService.registerRewardAction(name, action)
+    }
+
+    override fun unregisterRewardAction(name: String) {
+        voucherService.unregisterRewardAction(name)
+    }
 
     override fun onDisable() {
         if (::updateChecker.isInitialized) updateChecker.stop()
