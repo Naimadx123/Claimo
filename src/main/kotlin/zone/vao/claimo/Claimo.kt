@@ -4,32 +4,43 @@ import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents
 import org.bukkit.Material
 import org.bukkit.entity.Player
 import org.bukkit.event.Listener
+import org.bukkit.inventory.ItemStack
 import org.bukkit.plugin.java.JavaPlugin
+import zone.vao.claimo.command.AdminSuggestionFilter
 import zone.vao.claimo.command.VoucherCommand
 import zone.vao.claimo.config.ConfigManager
 import zone.vao.claimo.creator.VoucherCreator
 import zone.vao.claimo.gui.VoucherMenu
-import zone.vao.claimo.log.RedeemLog
+import zone.vao.claimo.log.ActionLog
 import zone.vao.claimo.prompt.CodePrompt
+import zone.vao.claimo.prompt.PriceConfirm
 import zone.vao.claimo.requirement.RequirementConfig
 import zone.vao.claimo.requirement.RequirementInput
+import zone.vao.claimo.requirement.RequirementGroups
 import zone.vao.claimo.requirement.RequirementRegistry
 import zone.vao.claimo.requirement.builtin.AccountAgeRequirement
 import zone.vao.claimo.requirement.builtin.BlocksMinedRequirement
 import zone.vao.claimo.requirement.builtin.CustomRequirement
+import zone.vao.claimo.requirement.builtin.GroupRequirement
 import zone.vao.claimo.requirement.builtin.MessagesSentRequirement
 import zone.vao.claimo.requirement.builtin.PermissionRequirement
 import zone.vao.claimo.requirement.builtin.PlaytimeRequirement
 import zone.vao.claimo.requirement.builtin.RankRequirement
+import zone.vao.claimo.reward.RewardAction
 import zone.vao.claimo.stats.ClaimoStats
 import zone.vao.claimo.stats.MessagePolicy
 import zone.vao.claimo.stats.StatsService
 import zone.vao.claimo.storage.StorageFactory
 import zone.vao.claimo.storage.UsageStorage
+import zone.vao.claimo.update.UpdateChecker
 import zone.vao.claimo.usage.UsageService
 import zone.vao.claimo.util.Durations
+import zone.vao.claimo.voucher.PendingGiveService
+import zone.vao.claimo.voucher.RedeemResult
 import zone.vao.claimo.voucher.Voucher
+import zone.vao.claimo.voucher.VoucherItemService
 import zone.vao.claimo.voucher.VoucherService
+import java.util.concurrent.CompletableFuture
 
 @Suppress("UnstableApiUsage")
 class Claimo : JavaPlugin(), ClaimoService {
@@ -42,6 +53,10 @@ class Claimo : JavaPlugin(), ClaimoService {
         private set
     lateinit var voucherService: VoucherService
         private set
+    lateinit var voucherItemService: VoucherItemService
+        private set
+    lateinit var pendingGiveService: PendingGiveService
+        private set
     lateinit var usageService: UsageService
         private set
     private lateinit var usageStorage: UsageStorage
@@ -51,7 +66,11 @@ class Claimo : JavaPlugin(), ClaimoService {
         private set
     var codePrompt: CodePrompt? = null
         private set
-    private lateinit var redeemLog: RedeemLog
+    var priceConfirm: PriceConfirm? = null
+        private set
+    lateinit var actionLog: ActionLog
+        private set
+    private lateinit var updateChecker: UpdateChecker
 
     override fun onEnable() {
         requirementRegistry = RequirementRegistry(logger)
@@ -70,19 +89,27 @@ class Claimo : JavaPlugin(), ClaimoService {
 
         voucherService = VoucherService(this)
 
+        voucherItemService = VoucherItemService(this)
+        server.pluginManager.registerEvents(voucherItemService, this)
+
+        pendingGiveService = PendingGiveService(this)
+        server.pluginManager.registerEvents(pendingGiveService, this)
+
         voucherMenu = VoucherMenu(this)
         server.pluginManager.registerEvents(voucherMenu, this)
 
         reload()
 
-        voucherCreator = createDialogCreatorIfSupported()
-        (voucherCreator as? Listener)?.let { server.pluginManager.registerEvents(it, this) }
+        voucherCreator = createDialogComponent("zone.vao.claimo.creator.DialogVoucherCreator", "the in-game code creator")
+        codePrompt = createDialogComponent("zone.vao.claimo.prompt.DialogCodePrompt", "the code input dialog")
+        priceConfirm = createDialogComponent("zone.vao.claimo.prompt.DialogPriceConfirm", "the price confirmation dialog")
 
-        codePrompt = createCodePromptIfSupported()
-        (codePrompt as? Listener)?.let { server.pluginManager.registerEvents(it, this) }
+        actionLog = ActionLog(this)
+        server.pluginManager.registerEvents(actionLog, this)
 
-        redeemLog = RedeemLog(this)
-        server.pluginManager.registerEvents(redeemLog, this)
+        updateChecker = UpdateChecker(this)
+        server.pluginManager.registerEvents(updateChecker, this)
+        updateChecker.start()
 
         registerPlaceholders()
         registerMiniPlaceholders()
@@ -90,6 +117,7 @@ class Claimo : JavaPlugin(), ClaimoService {
         ClaimoApi.init(this)
 
         registerCommand()
+        server.pluginManager.registerEvents(AdminSuggestionFilter(this), this)
 
         logger.info("Claimo enabled — redeem command: /${configManager.config.commandName}")
     }
@@ -98,6 +126,7 @@ class Claimo : JavaPlugin(), ClaimoService {
         configManager.load()
         statsService.trackMaterials(trackedBlockMaterials())
         statsService.configureMessagePolicies(messagePolicies())
+        if (::updateChecker.isInitialized) updateChecker.start()
         refreshClientCommands()
     }
 
@@ -109,7 +138,7 @@ class Claimo : JavaPlugin(), ClaimoService {
 
     private fun messagePolicies(): Set<MessagePolicy> =
         configManager.config.vouchers.values
-            .flatMap { it.requirements }
+            .flatMap { it.flattenedRequirements() }
             .filter { it.type.equals("messages_sent", ignoreCase = true) }
             .mapTo(HashSet()) { MessagePolicy.from(it) }
 
@@ -117,10 +146,87 @@ class Claimo : JavaPlugin(), ClaimoService {
     override val stats: ClaimoStats get() = statsService
     override fun vouchers(): Collection<Voucher> = configManager.config.vouchers.values
     override fun voucher(id: String): Voucher? = configManager.config.vouchers[id]
-    override fun redeem(player: Player, voucherId: String) = voucherService.redeem(player, voucherId)
+
+    override fun redeem(player: Player, voucherId: String) {
+        voucherService.redeem(player, voucherId)
+    }
+
+    override fun redeemWithResult(player: Player, voucherId: String): CompletableFuture<RedeemResult> =
+        voucherService.redeem(player, voucherId)
+
+    override fun globalUses(voucherId: String): Int = usageService.globalUses(voucherId)
+
+    override fun playerUses(player: Player, voucherId: String): Int = usageService.playerUses(player, voucherId)
+
+    override fun cooldownRemaining(player: Player, voucherId: String): Long =
+        voucherService.cooldownRemaining(player, voucherId)
+
+    override fun clearCooldown(player: Player, voucherId: String) {
+        voucherService.clearCooldowns(player, listOf(voucherId))
+    }
+
+    override fun buildVoucherItem(voucherId: String, amount: Int): ItemStack? {
+        val voucher = configManager.config.vouchers[voucherId] ?: return null
+        return voucherItemService.build(voucher, amount)
+    }
+
+    override fun giveVoucherItem(player: Player, voucherId: String, amount: Int): Boolean {
+        val voucher = configManager.config.vouchers[voucherId] ?: return false
+        return voucherItemService.give(player, voucher, amount)
+    }
+
+    override fun queueVoucherItem(playerName: String, voucherId: String, amount: Int): Boolean {
+        val voucher = configManager.config.vouchers[voucherId]
+        if (voucher?.item == null) return false
+        val online = server.getPlayerExact(playerName)
+        if (online != null) {
+            online.scheduler.run(this, { voucherItemService.give(online, voucher, amount) }, null)
+        } else {
+            pendingGiveService.queue(playerName, voucherId, amount)
+        }
+        return true
+    }
+
+    override fun createVoucher(id: String, settings: Map<String, Any>): Boolean {
+        val safeId = configManager.sanitizeId(id) ?: return false
+        if (configManager.voucherExists(safeId)) return false
+        configManager.saveVoucher(safeId) { yaml ->
+            settings.forEach { (key, value) ->
+                if (value is Map<*, *>) yaml.createSection(key, value) else yaml.set(key, value)
+            }
+        }
+        reload()
+        return true
+    }
+
+    override fun deleteVoucher(id: String): Boolean {
+        val safeId = configManager.sanitizeId(id) ?: return false
+        if (!configManager.deleteVoucher(safeId)) return false
+        reload()
+        return true
+    }
+
+    override fun generateCodes(templateId: String, amount: Int): List<String>? {
+        val safeId = configManager.sanitizeId(templateId) ?: return null
+        if (!configManager.voucherExists(safeId)) return null
+        val generated = runCatching { configManager.generateCodes(safeId, amount.coerceIn(1, 500)) }
+            .onFailure { logger.warning("Failed to generate codes from '$safeId': ${it.message}") }
+            .getOrNull() ?: return null
+        reload()
+        return generated.second
+    }
+
+    override fun registerRewardAction(name: String, action: RewardAction) {
+        voucherService.registerRewardAction(name, action)
+    }
+
+    override fun unregisterRewardAction(name: String) {
+        voucherService.unregisterRewardAction(name)
+    }
 
     override fun onDisable() {
-        if (::redeemLog.isInitialized) redeemLog.shutdown()
+        if (::updateChecker.isInitialized) updateChecker.stop()
+        if (::actionLog.isInitialized) actionLog.shutdown()
         if (::usageService.isInitialized) usageService.shutdown()
         ClaimoApi.shutdown()
     }
@@ -213,6 +319,16 @@ class Claimo : JavaPlugin(), ClaimoService {
                 RequirementInput.TextInput("denied-ranks", "Forbidden ranks (comma-separated)"),
             ),
         )
+        for (mode in GroupRequirement.Mode.entries) {
+            requirementRegistry.register(mode.name.lowercase(), { cfg ->
+                GroupRequirement(
+                    configManager.config.messages,
+                    mode,
+                    RequirementGroups.children(cfg),
+                    requirementRegistry,
+                )
+            })
+        }
         requirementRegistry.register(
             "custom",
             { cfg ->
@@ -226,7 +342,7 @@ class Claimo : JavaPlugin(), ClaimoService {
             listOf(
                 RequirementInput.TextInput("placeholder", "Placeholder (e.g. %vault_eco_balance%)"),
                 RequirementInput.TextInput("operator", "Operator (>=, <=, ==, !=, contains, regex)", initial = ">="),
-                RequirementInput.TextInput("value", "Value to compare against"),
+                RequirementInput.TextInput("value", "Value to compare against (placeholders work too)"),
             ),
         )
     }
@@ -252,38 +368,24 @@ class Claimo : JavaPlugin(), ClaimoService {
 
     private fun trackedBlockMaterials(): Set<Material> =
         configManager.config.vouchers.values
-            .flatMap { it.requirements }
+            .flatMap { it.flattenedRequirements() }
             .filter { it.type.equals("blocks_mined", ignoreCase = true) }
             .flatMap { it.getStringList("whitelist") + it.getStringList("blacklist") }
             .mapNotNullTo(HashSet()) { Material.matchMaterial(it.trim()) }
 
-    private fun createDialogCreatorIfSupported(): VoucherCreator? {
+    @Suppress("UNCHECKED_CAST")
+    private fun <T> createDialogComponent(className: String, feature: String): T? {
         val supported = runCatching { Class.forName("io.papermc.paper.dialog.Dialog") }.isSuccess
         if (!supported) {
-            logger.info("Dialog API not available (server < 1.21.7); the in-game code creator is disabled.")
+            logger.info("Dialog API not available (server < 1.21.7); $feature is disabled.")
             return null
         }
         return runCatching {
-            Class.forName("zone.vao.claimo.creator.DialogVoucherCreator")
-                .getConstructor(Claimo::class.java)
-                .newInstance(this) as VoucherCreator
+            val component = Class.forName(className).getConstructor(Claimo::class.java).newInstance(this)
+            (component as? Listener)?.let { server.pluginManager.registerEvents(it, this) }
+            component as T
         }.onFailure {
-            logger.warning("Failed to initialise the dialog code creator: ${it.message}")
-        }.getOrNull()
-    }
-
-    private fun createCodePromptIfSupported(): CodePrompt? {
-        val supported = runCatching { Class.forName("io.papermc.paper.dialog.Dialog") }.isSuccess
-        if (!supported) {
-            logger.info("Dialog API not available (server < 1.21.7); the code input dialog is disabled.")
-            return null
-        }
-        return runCatching {
-            Class.forName("zone.vao.claimo.prompt.DialogCodePrompt")
-                .getConstructor(Claimo::class.java)
-                .newInstance(this) as CodePrompt
-        }.onFailure {
-            logger.warning("Failed to initialise the code input dialog: ${it.message}")
+            logger.warning("Failed to initialise $feature: ${it.message}")
         }.getOrNull()
     }
 

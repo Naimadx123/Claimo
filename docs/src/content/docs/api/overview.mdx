@@ -16,7 +16,9 @@ without forking the plugin.
 
 <Aside type="tip" title="The API is a separate artifact">
 	The public API lives in its own `zone.vao:claimo-api` module, published to
-	`repo.vao.zone`, so you compile against just the API — not the whole plugin.
+	[https://repo.vao.zone/](https://repo.vao.zone/), so you compile against just the API —
+	not the whole plugin. Release versions live under `/releases`, `-SNAPSHOT` versions
+	under `/snapshots`.
 </Aside>
 
 ## Depend on Claimo
@@ -28,8 +30,38 @@ without forking the plugin.
 		    maven("https://repo.vao.zone/releases")   // or /snapshots for -SNAPSHOT versions
 		}
 		dependencies {
-		    compileOnly("zone.vao:claimo-api:1.0-SNAPSHOT")
+		    compileOnly("zone.vao:claimo-api:1.4.2")
 		}
+		```
+	</TabItem>
+	<TabItem label="Gradle (Groovy)" icon="seti:gradle">
+		```groovy title="build.gradle"
+		repositories {
+		    maven { url 'https://repo.vao.zone/releases' }   // or /snapshots for -SNAPSHOT versions
+		}
+		dependencies {
+		    compileOnly 'zone.vao:claimo-api:1.4.2'
+		}
+		```
+	</TabItem>
+	<TabItem label="Maven" icon="seti:xml">
+		```xml title="pom.xml"
+		<repositories>
+		    <repository>
+		        <id>vao-releases</id>
+		        <url>https://repo.vao.zone/releases</url>
+		        <!-- or https://repo.vao.zone/snapshots for -SNAPSHOT versions -->
+		    </repository>
+		</repositories>
+
+		<dependencies>
+		    <dependency>
+		        <groupId>zone.vao</groupId>
+		        <artifactId>claimo-api</artifactId>
+		        <version>1.4.2</version>
+		        <scope>provided</scope>
+		    </dependency>
+		</dependencies>
 		```
 	</TabItem>
 	<TabItem label="plugin.yml" icon="seti:yml">

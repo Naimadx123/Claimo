@@ -7,6 +7,7 @@ import org.bukkit.event.Listener
 import org.bukkit.event.player.AsyncPlayerPreLoginEvent
 import org.bukkit.event.player.PlayerQuitEvent
 import org.bukkit.plugin.java.JavaPlugin
+import zone.vao.claimo.storage.RedeemHistoryEntry
 import zone.vao.claimo.storage.UsageStorage
 import zone.vao.claimo.voucher.LimitMode
 import zone.vao.claimo.voucher.Voucher
@@ -44,27 +45,61 @@ class UsageService(
         LimitMode.PER_PLAYER -> playerUses(player, voucher.id) >= voucher.limitAmount
     }
 
-    fun record(player: Player, voucher: Voucher) {
+    fun tryRecord(player: Player, voucher: Voucher): Boolean {
         val uuid = player.uniqueId
-        val globalCount = global.merge(voucher.id, 1, Int::plus) ?: 1
-        val playerCount = incrementPlayer(uuid, voucher.id)
-        io.execute {
-            storage.saveGlobal(voucher.id, globalCount)
-            storage.savePlayer(uuid, voucher.id, playerCount)
+        val playerMax = when (voucher.limitMode) {
+            LimitMode.NONE -> Int.MAX_VALUE
+            LimitMode.GLOBAL -> 1
+            LimitMode.PER_PLAYER -> voucher.limitAmount
         }
+        val globalMax = if (voucher.limitMode == LimitMode.GLOBAL) voucher.limitAmount else Int.MAX_VALUE
+        if (!storage.incrementPlayer(uuid, voucher.id, playerMax)) return false
+        if (!storage.incrementGlobal(voucher.id, globalMax)) {
+            storage.decrementPlayer(uuid, voucher.id)
+            return false
+        }
+        global.merge(voucher.id, 1, Int::plus)
+        incrementPlayer(uuid, voucher.id)
+        return true
     }
 
-    fun purgeExcept(validIds: Set<String>): Int {
+    fun recordHistory(player: Player, voucher: Voucher) {
+        val entry = RedeemHistoryEntry(
+            voucherId = voucher.id,
+            uuid = player.uniqueId,
+            playerName = player.name,
+            timestamp = System.currentTimeMillis(),
+            price = voucher.price,
+        )
+        io.execute { storage.recordHistory(entry) }
+    }
+
+    fun voucherHistory(voucherId: String, limit: Int): List<RedeemHistoryEntry> =
+        storage.voucherHistory(voucherId, limit)
+
+    fun playerHistory(uuid: UUID, limit: Int): List<RedeemHistoryEntry> =
+        storage.playerHistory(uuid, limit)
+
+    fun uniquePlayers(voucherId: String): Int = storage.uniquePlayers(voucherId)
+
+    fun release(player: Player, voucher: Voucher) {
+        storage.decrementGlobal(voucher.id)
+        storage.decrementPlayer(player.uniqueId, voucher.id)
+        global.merge(voucher.id, -1) { a, b -> (a + b).coerceAtLeast(0) }
+        players[player.uniqueId]?.merge(voucher.id, -1) { a, b -> (a + b).coerceAtLeast(0) }
+    }
+
+    fun purgeExcept(validIds: Set<String>): Set<String> {
         val valid = validIds.mapTo(HashSet()) { it.lowercase() }
         val known = global.keys + players.values.flatMap { it.keys }
         val orphaned = known.filterNot { it.lowercase() in valid }.toSet()
-        if (orphaned.isEmpty()) return 0
+        if (orphaned.isEmpty()) return emptySet()
         for (id in orphaned) {
             global.remove(id)
             players.values.forEach { it.remove(id) }
         }
         io.execute { orphaned.forEach { storage.deleteVoucher(it) } }
-        return orphaned.size
+        return orphaned
     }
 
     fun shutdown() {
@@ -84,8 +119,9 @@ class UsageService(
         players.remove(event.player.uniqueId)
     }
 
-    private fun incrementPlayer(uuid: UUID, voucherId: String): Int =
-        players.getOrPut(uuid) { ConcurrentHashMap() }.merge(voucherId, 1, Int::plus) ?: 1
+    private fun incrementPlayer(uuid: UUID, voucherId: String) {
+        players.getOrPut(uuid) { ConcurrentHashMap() }.merge(voucherId, 1, Int::plus)
+    }
 
     private fun loadPlayer(uuid: UUID): MutableMap<String, Int> =
         ConcurrentHashMap<String, Int>().apply { putAll(storage.loadPlayer(uuid)) }

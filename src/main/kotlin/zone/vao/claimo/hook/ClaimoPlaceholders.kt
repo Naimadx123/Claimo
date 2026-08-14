@@ -27,7 +27,7 @@ object ClaimoPlaceholders {
             "limit" -> if (voucher.limitMode == LimitMode.NONE) "unlimited" else voucher.limitAmount.toString()
             "remaining" -> remaining(plugin, voucher, player)
             "expired" -> bool(plugin, voucher.id, voucher.isExpired())
-            "can_redeem" -> bool(plugin, voucher.id, online != null && !voucher.isExpired() && !plugin.usageService.isExhausted(online, voucher))
+            "can_redeem" -> bool(plugin, voucher.id, online != null && voucher.isAvailable() && !plugin.usageService.isExhausted(online, voucher))
             else -> null
         }
     }

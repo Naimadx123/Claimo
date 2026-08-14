@@ -6,7 +6,7 @@ main: zone.vao.claimo.Claimo
 api-version: '1.21'
 load: POSTWORLD
 author: "Naimad (dc: 4g0)"
-softdepend: [PlaceholderAPI, Vault, MiniPlaceholders]
+softdepend: [PlaceholderAPI, Vault, MiniPlaceholders, Nexo, ItemsAdder, CraftEngine]
 
 libraries:
   - "org.jetbrains.kotlin:kotlin-stdlib:${kotlinVersion}"
@@ -22,4 +22,7 @@ permissions:
     default: true
   claimo.admin:
     description: Allows reloading the Claimo configuration.
+    default: op
+  claimo.update:
+    description: Receives a notification on join when a new Claimo version is available.
     default: op

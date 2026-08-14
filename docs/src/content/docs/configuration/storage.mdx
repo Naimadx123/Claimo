@@ -5,8 +5,10 @@ description: Where Claimo persists redemption counts — from zero-setup YAML to
 
 import { Aside, Badge, Tabs, TabItem, CardGrid, Card } from '@astrojs/starlight/components';
 
-Claimo stores **redemption counts** — global pools and per-player usage — in a backend you
-choose under `storage:` in `config.yml`.
+Claimo stores **redemption counts** — global pools and per-player usage — plus a **redeem
+history** (who redeemed what, when, at what price, powering `/code history` and
+`/code stats`) in a backend you choose under `storage:` in `config.yml`. The YAML backend
+caps the history at its 1000 most recent entries; the database backends keep everything.
 
 <Aside type="caution" title="Restart required">
 	Changing `storage.type` requires a **server restart**, not just `/code reload`.
@@ -23,6 +25,15 @@ choose under `storage:` in `config.yml`.
 		consistent across a network.
 	</Card>
 </CardGrid>
+
+<Aside type="note" title="How limits stay consistent">
+	Every redeem **atomically reserves** a use in the backend (`UPDATE … WHERE uses < limit`
+	or the MongoDB equivalent) before the reward runs, and rolls the reservation back if the
+	payment step fails. Two servers racing for the last use of a shared pool can't both win —
+	the database decides. Counters shown by placeholders and the GUI are cached locally
+	(refreshed at startup and on player join), so they may lag slightly behind the shared
+	total; enforcement never relies on them.
+</Aside>
 
 | `type` | Setup | Best for |
 | --- | --- | --- |

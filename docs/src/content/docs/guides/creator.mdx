@@ -28,11 +28,18 @@ author codes without touching a single file.
    - **Command** — the command it runs (supports `%player%`).
    - **Run as console** — toggle on to run with console permissions.
    - **Hide from list** — keep it out of the GUI and tab-completion.
+   - **Expiry** — an optional duration like `5d`.
    - **Usage limit** — an optional max-uses value with a per-player / shared toggle.
-3. **Following page(s) — requirements:** every **registered** requirement type is listed
+   - **Price** — an optional Vault cost charged on redeem.
+3. **Page 2 — item & effects (all optional):**
+   - **Give as an item** — enable the [item form](/guides/vouchers/#item--a-physical-voucher-item)
+     with a material, MiniMessage name and lore (separate lore lines with `|`).
+   - **Fireworks / particle / shape** — a [celebration](/guides/vouchers/#effects--a-celebration-on-redeem)
+     played when the redeem succeeds.
+4. **Following page(s) — requirements:** every **registered** requirement type is listed
    — built-in *and* any added by addons — each with an on/off toggle and its configurable
    fields. Flip on the ones you want and fill in their values.
-4. Use **« Back / Next »** to move between pages, then click **Create** on the last page.
+5. Use **« Back / Next »** to move between pages, then click **Create** on the last page.
    Claimo writes `vouchers/<name>.yml` and reloads.
 </Steps>
 
@@ -53,6 +60,12 @@ and overwrites it on save.
 	  multi-command codes file-edited to avoid losing the extra lines.
 </Aside>
 
+<Aside type="note" title="File-only keys survive an edit">
+	Saving from the wizard keeps keys it has no fields for — `cooldown`, `starts`, `random`,
+	`redeem-command` arguments, hook items (`nexo_item` & co.) and anything else you added by
+	hand stay in the file.
+</Aside>
+
 ## Deleting a code
 
 `/<command> delete <voucher>` shows a confirmation dialog and removes the file.
@@ -69,8 +82,11 @@ directly for advanced options:
 	<Card title="Whitelist / blacklist" icon="approve-check">
 		Material filters on the `blocks_mined` requirement.
 	</Card>
-	<Card title="Expiry" icon="star">
-		A human-friendly `expires` duration like `30d` or `1d12h`.
+	<Card title="Cooldowns & activation windows" icon="seti:clock">
+		The `cooldown` and `starts` keys for daily or scheduled codes.
+	</Card>
+	<Card title="Random rewards & hook items" icon="random">
+		Weighted `random` command picks and Nexo / ItemsAdder / CraftEngine items.
 	</Card>
 </CardGrid>
 

@@ -17,15 +17,20 @@ class CustomRequirement(
 ) : Requirement {
 
     override fun check(context: RequirementContext): CompletableFuture<RequirementResult> {
+        val papi = Bukkit.getPluginManager().isPluginEnabled("PlaceholderAPI")
+        val actual = resolve(context, placeholder, papi)
+        val expected = resolve(context, value, papi)
         val description = messages.line(
             "requirement-custom",
             Placeholder.unparsed("placeholder", placeholder),
             Placeholder.unparsed("placeholder_pretty", placeholder.replace("%", "").replace("_", " ").trim()),
-            Placeholder.unparsed("placeholder_parsed", PlaceholderAPI.setPlaceholders(context.player, placeholder)),
+            Placeholder.unparsed("placeholder_parsed", actual),
             Placeholder.unparsed("operator", operator),
             Placeholder.unparsed("value", value),
+            Placeholder.unparsed("value_parsed", expected),
         )
-        val result = if (evaluate(context)) {
+        val satisfied = papi && placeholder.isNotBlank() && compare(actual, expected, operator.trim().lowercase())
+        val result = if (satisfied) {
             RequirementResult.satisfied(description)
         } else {
             RequirementResult.unsatisfied(description)
@@ -33,13 +38,8 @@ class CustomRequirement(
         return CompletableFuture.completedFuture(result)
     }
 
-    private fun evaluate(context: RequirementContext): Boolean {
-        if (placeholder.isBlank()) return false
-        if (!Bukkit.getPluginManager().isPluginEnabled("PlaceholderAPI")) return false
-        val actual = PlaceholderAPI.setPlaceholders(context.player, placeholder).trim()
-        val valueParsed = PlaceholderAPI.setPlaceholders(context.player, this.value).trim()
-        return compare(actual, valueParsed, operator.trim().lowercase())
-    }
+    private fun resolve(context: RequirementContext, text: String, papi: Boolean): String =
+        if (papi) PlaceholderAPI.setPlaceholders(context.player, text).trim() else text.trim()
 
     private fun compare(actual: String, expected: String, op: String): Boolean = when (op) {
         "", "==", "=", "equals" -> actual.equals(expected, ignoreCase = true)

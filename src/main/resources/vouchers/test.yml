@@ -3,6 +3,43 @@ cmd: "lp user %player% parent addtemp vip 7d"
 # redeem-command: testget
 console: true
 hide: false
+# Optional: run ONE random command from `cmd` instead of all of them. Default: false.
+# Add `chance:` weights per entry for non-uniform odds:
+# random: true
+# cmd:
+#   - command: "give %player% diamond 5"
+#     chance: 10
+#   - command: "give %player% dirt 1"
+#     chance: 90
+# Optional: the code only becomes active after this moment. Accepts a duration
+# counted like `expires` (e.g. 2d) or an absolute local date/time.
+# starts: "2026-08-15 18:00"
+# Optional: per-player delay between redemptions (e.g. a daily code).
+# cooldown: 1d
+# Optional: Vault economy price charged when the code is redeemed.
+# price: 100.0
+# Optional: celebration on redeem - fireworks and/or a particle shape.
+# effects:
+#   fireworks: 2
+#   particle: FLAME
+#   shape: helix   # burst, circle, sphere or helix
+# Optional item form - give with /code give <players> test [amount]; players redeem by right-clicking.
+# item:
+#   material: PAPER
+#   name: "<aqua>Test voucher"
+#   lore:
+#     - "<gray>Right-click to redeem."
+#   custom_model_data: 1          # single value (all versions)
+#   # custom_model_data:          # component form (1.21.4+ only)
+#   #   floats: [1.0]
+#   #   flags: [true]
+#   #   strings: ["ruby"]
+#   #   colors: ["#FF0000"]
+#   item_model: "minecraft:paper"  # 1.21.2+ only
+#   # Or take the item from another plugin instead of the settings above:
+#   # nexo_item: item_id
+#   # ia_item: item_id
+#   # ce_item: item_id
 requirements:
   - type: blocks_mined
     amount: 100

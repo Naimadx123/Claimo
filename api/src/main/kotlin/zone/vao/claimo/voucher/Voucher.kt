@@ -1,6 +1,7 @@
 package zone.vao.claimo.voucher
 
 import zone.vao.claimo.requirement.RequirementConfig
+import zone.vao.claimo.requirement.RequirementGroups
 
 data class Voucher(
     val id: String,
@@ -11,9 +12,26 @@ data class Voucher(
     val limitAmount: Int,
     val requirements: List<RequirementConfig>,
     val expiresAt: Long? = null,
-    /** Optional standalone command that redeems this voucher directly (e.g. `testodbierz`), or `null`. */
     val redeemCommand: String? = null,
+    val item: VoucherItem? = null,
+    val startsAt: Long? = null,
+    val cooldownMillis: Long? = null,
+    val random: Boolean = false,
+    val commandChances: List<Double> = emptyList(),
+    val price: Double = 0.0,
+    val effects: VoucherEffects? = null,
+    val campaign: String? = null,
+    val disabled: Boolean = false,
 ) {
     fun isExpired(now: Long = System.currentTimeMillis()): Boolean =
         expiresAt != null && now >= expiresAt
+
+    fun isNotStarted(now: Long = System.currentTimeMillis()): Boolean =
+        startsAt != null && now < startsAt
+
+    fun isAvailable(now: Long = System.currentTimeMillis()): Boolean =
+        !disabled && !isExpired(now) && !isNotStarted(now)
+
+    /** Requirements flattened: group entries (any/all/not) are replaced by their children, recursively. */
+    fun flattenedRequirements(): List<RequirementConfig> = RequirementGroups.flatten(requirements)
 }

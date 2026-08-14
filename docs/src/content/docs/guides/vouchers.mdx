@@ -37,6 +37,12 @@ limit:
 requirements:
   - type: blocks_mined
     amount: 100
+# Optional physical item form — give with /code give, redeem by right-clicking.
+item:
+  material: PAPER
+  name: "<aqua>Test voucher"
+  lore:
+    - "<gray>Right-click to redeem."
 ```
 
 ## Fields
@@ -65,6 +71,26 @@ optional.
 - `%player%` is replaced with the redeeming player's name.
 - With **PlaceholderAPI** installed, any other `%placeholder%` (e.g. `%player_uuid%`,
   `%vault_eco_balance%`) is resolved too.
+- A line of the form `action:<name> <args>` runs a [reward action](/api/reference/#reward-actions)
+  registered by an addon instead of dispatching a command.
+
+### `random` — pick one command instead of all
+
+<Badge text="default: false" variant="note" /> — with `random: true`, **one** entry from
+`cmd` is picked at random per redeem (instead of running all of them). The pick is uniform
+unless entries declare a `chance` weight:
+
+```yaml
+random: true
+cmd:
+  - command: "give %player% diamond 5"
+    chance: 10                          # 10 / (10+90) = 10%
+  - command: "give %player% dirt 1"
+    chance: 90
+```
+
+Weights are relative — they don't have to add up to 100. Plain string entries and
+weighted map entries can be mixed; strings count as `chance: 1`.
 
 ### `console` — who runs the command
 
@@ -120,6 +146,66 @@ Units combine: `1d12h` means one and a half days.
 	creator) when present, otherwise from the file's **last-modified time**.
 </Aside>
 
+### `starts` — an activation time
+
+Optional. Before this moment the code behaves like a hidden one — it's out of the GUI and
+tab-completion, and redeeming answers with a "starts in …" message. Accepts either a
+duration counted the same way as `expires` (from `created`, else the file's last-modified
+time) or an absolute **local** date/time:
+
+```yaml
+starts: "2026-08-15 18:00"   # or a date: "2026-08-15", or a duration: 2d
+expires: 30d                 # combine both for a from–to window
+```
+
+### `cooldown` — a per-player delay
+
+Optional. Each player must wait this long between redemptions — ideal for daily/weekly
+codes. Same duration units as `expires`. Unlike `limit`, it doesn't cap total uses.
+
+```yaml
+cooldown: 1d    # a daily code
+```
+
+<Aside type="note">
+	Cooldowns are stored on the player, so they survive restarts and work independently of
+	the usage database. `/code purge` also clears the cooldowns of deleted codes for online
+	players.
+</Aside>
+
+### `price` — a Vault cost
+
+Optional. The player is charged this amount (via **Vault**) when the code is redeemed.
+Players who can't afford it get a `not-enough-money` message; the withdrawal happens only
+after every other check (limits, cooldown, requirements) has passed.
+
+```yaml
+price: 100.0
+```
+
+Redeeming a priced code always asks for confirmation first: on **1.21.7+** a confirmation
+dialog opens, on older servers the player is asked to redeem the code **again within 10
+seconds** — so a stray right-click on a voucher item never charges anyone by accident.
+
+<Aside type="caution" title="Needs a Vault economy">
+	Requires Vault plus an economy provider (EssentialsX, CMI, …). Without one, a priced
+	code refuses to redeem rather than handing out the reward for free.
+</Aside>
+
+### `effects` — a celebration on redeem
+
+Optional. Fireworks and/or a particle shape played at the player when the redeem succeeds.
+
+```yaml
+effects:
+  fireworks: 2       # rockets launched at the player (0-10)
+  particle: FLAME    # any Bukkit particle name, omit for none
+  shape: helix       # burst (default), circle, sphere or helix
+```
+
+An unknown particle or shape logs a console warning and is skipped — the redeem itself is
+never blocked by a bad effect.
+
 ### `limit` — redemption caps
 
 Omit for unlimited redemptions.
@@ -166,6 +252,55 @@ requirements:
 
 See [Requirements](/guides/requirements/) for the full catalogue of built-in types and
 their parameters.
+
+### `item` — a physical voucher item
+
+Optional. Gives the code an item form: admins hand it out with
+`/code give <players> <code> [amount]` and players redeem it by **right-clicking**
+(one item is consumed per successful redeem — requirements and limits still apply).
+
+Every key inside `item` is optional; an empty `item:` section falls back to plain paper.
+
+```yaml
+item:
+  material: PAPER                  # any Bukkit material (default: PAPER)
+  name: "<aqua>Test voucher"       # MiniMessage; <voucher> resolves to the code
+  lore:
+    - "<gray>Right-click to redeem."
+  custom_model_data: 1             # single value — works on every version
+  item_model: "minecraft:paper"    # resource key, 1.21.2+ servers only
+```
+
+On **1.21.4+** servers, `custom_model_data` also accepts the component form with lists
+(a bare list is treated as `floats`):
+
+```yaml
+item:
+  custom_model_data:
+    floats: [1.0]
+    flags: [true]
+    strings: ["ruby"]
+    colors: ["#FF0000"]            # hex colors
+```
+
+Instead of the settings above, the item can come from another item plugin — set exactly
+one of these to that plugin's item id (name, lore and model keys still apply on top if set):
+
+```yaml
+item:
+  nexo_item: item_id     # Nexo
+  # ia_item: item_id     # ItemsAdder
+  # ce_item: item_id     # CraftEngine
+```
+
+If the referenced plugin or item id can't be resolved, Claimo logs a warning and falls
+back to `material` (or paper).
+
+<Aside type="tip" title="Items update themselves">
+	Voucher items carry a fingerprint of their `item` section. After you edit it and run
+	`/code reload`, outdated copies held by players are rebuilt automatically — on join,
+	when they open an inventory, or when the item is dropped.
+</Aside>
 
 ## Reloading
 

@@ -27,7 +27,7 @@ class VoucherMenu(private val plugin: Claimo) : Listener {
     fun open(player: Player, page: Int) {
         val config = plugin.configManager.config
         val gui = config.gui
-        val visible = config.vouchers.values.filter { !it.hidden && !it.isExpired() }
+        val visible = config.vouchers.values.filter { !it.hidden && it.isAvailable() }
 
         val size = gui.rows * 9
         val perPage = size - 9

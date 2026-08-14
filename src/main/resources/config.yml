@@ -17,7 +17,14 @@ redeem-sound:
   pitch: 1.0
 
 logging:
-  redeems: true
+  redeems: true # logs/redeems.log - every successful redeem
+  admin: true # logs/admin.log - give, generate, purge and creator actions
+
+# Checks https://github.com/Naimadx123/Claimo/releases for a newer version.
+update-checker:
+  enabled: true
+  notify-admins: true # players with claimo.update get a message on join
+  interval-hours: 6 # how often to re-check (minimum 1)
 
 storage:
   type: yaml
