@@ -18,6 +18,7 @@ import zone.vao.claimo.prompt.PriceConfirm
 import zone.vao.claimo.requirement.RequirementConfig
 import zone.vao.claimo.requirement.RequirementGroups
 import zone.vao.claimo.requirement.RequirementInput
+import zone.vao.claimo.requirement.RequirementGroups
 import zone.vao.claimo.requirement.RequirementRegistry
 import zone.vao.claimo.requirement.builtin.*
 import zone.vao.claimo.reward.RewardAction
