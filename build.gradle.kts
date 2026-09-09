@@ -24,6 +24,7 @@ dependencies {
     compileOnly("com.zaxxer:HikariCP:$hikariVersion")
     compileOnly("org.mongodb:mongodb-driver-sync:$mongoVersion")
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
+    implementation("org.bstats:bstats-bukkit:3.2.1")
 }
 
 kotlin {
@@ -40,6 +41,8 @@ tasks {
             exclude(dependency("org.jetbrains.kotlin:.*:.*"))
             exclude(dependency("org.jetbrains:annotations:.*"))
         }
+
+        relocate("org.bstats", "${project.group}.claimo.thirdparties.bstats")
     }
 
     build {
@@ -58,7 +61,7 @@ tasks {
             "hikariVersion" to hikariVersion,
             "mongoVersion" to mongoVersion,
         )
-        filesMatching("plugin.yml") {
+        filesMatching(listOf("paper-plugin.yml", "libraries.txt")) {
             expand(props)
         }
     }

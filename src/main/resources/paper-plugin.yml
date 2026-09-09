@@ -1,0 +1,42 @@
+name: Claimo
+version: '${version}'
+
+folia-supported: true
+main: zone.vao.claimo.Claimo
+bootstrapper: zone.vao.claimo.ClaimoBootstrap
+loader: zone.vao.claimo.ClaimoLoader
+api-version: '1.21'
+load: POSTWORLD
+authors: ["Naimad (dc: 4g0)"]
+
+dependencies:
+  server:
+    PlaceholderAPI:
+      load: BEFORE
+      required: false
+    Vault:
+      load: BEFORE
+      required: false
+    MiniPlaceholders:
+      load: BEFORE
+      required: false
+    Nexo:
+      load: BEFORE
+      required: false
+    ItemsAdder:
+      load: BEFORE
+      required: false
+    CraftEngine:
+      load: BEFORE
+      required: false
+
+permissions:
+  claimo.use:
+    description: Allows redeeming voucher codes.
+    default: true
+  claimo.admin:
+    description: Allows reloading the Claimo configuration.
+    default: op
+  claimo.update:
+    description: Receives a notification on join when a new Claimo version is available.
+    default: op

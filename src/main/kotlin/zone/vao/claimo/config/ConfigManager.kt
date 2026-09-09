@@ -55,7 +55,7 @@ class ConfigManager(private val plugin: JavaPlugin) {
             redeemSound = parseSound(main.getConfigurationSection("redeem-sound")),
             logRedeems = main.getBoolean("logging.redeems", true),
             logAdmin = main.getBoolean("logging.admin", true),
-            messages = parseMessages(messages),
+            messages = Messages.from(messages),
             gui = parseGui(gui),
             vouchers = loadVouchers(),
             placeholderTrue = main.getString("placeholders.true-value") ?: "true",
@@ -227,16 +227,6 @@ class ConfigManager(private val plugin: JavaPlugin) {
         val trimmed = name.trim()
         if (trimmed.equals("none", ignoreCase = true) || trimmed.equals("air", ignoreCase = true)) return null
         return Material.matchMaterial(trimmed) ?: Material.GRAY_STAINED_GLASS_PANE
-    }
-
-    private fun parseMessages(section: ConfigurationSection?): Messages {
-        val prefix = section?.getString("prefix") ?: ""
-        val raw = buildMap {
-            section?.getKeys(false)
-                ?.filter { it != "prefix" }
-                ?.forEach { key -> section.getString(key)?.let { put(key, it) } }
-        }
-        return Messages(prefix, raw)
     }
 
     private fun parseVoucher(id: String, section: ConfigurationSection, defaultCreatedAt: Long): Voucher {

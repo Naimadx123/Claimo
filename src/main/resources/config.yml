@@ -2,6 +2,12 @@ command: code
 dialog_code_input: codeinput # comment this line if you don't want dialog input code
 gui-list-enabled: true
 
+# Adds a Claimo button to the pause (Esc) screen on Minecraft 1.21.6+.
+# Changing this requires a server restart.
+pause-screen-button:
+  enabled: true
+  label: "<aqua>Redeem a code" # text drawn on the button itself
+
 # Text returned by the boolean placeholders (redeemed, can_redeem, expired) in both
 # PlaceholderAPI and MiniPlaceholders. Use it to show custom messages instead of true/false.
 # <voucher> is replaced with the code id, e.g. true-value: "You already redeemed <voucher>!".

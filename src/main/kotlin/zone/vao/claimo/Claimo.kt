@@ -1,6 +1,7 @@
 package zone.vao.claimo
 
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents
+import org.bstats.bukkit.Metrics
 import org.bukkit.Material
 import org.bukkit.entity.Player
 import org.bukkit.event.Listener
@@ -15,17 +16,10 @@ import zone.vao.claimo.log.ActionLog
 import zone.vao.claimo.prompt.CodePrompt
 import zone.vao.claimo.prompt.PriceConfirm
 import zone.vao.claimo.requirement.RequirementConfig
-import zone.vao.claimo.requirement.RequirementInput
 import zone.vao.claimo.requirement.RequirementGroups
+import zone.vao.claimo.requirement.RequirementInput
 import zone.vao.claimo.requirement.RequirementRegistry
-import zone.vao.claimo.requirement.builtin.AccountAgeRequirement
-import zone.vao.claimo.requirement.builtin.BlocksMinedRequirement
-import zone.vao.claimo.requirement.builtin.CustomRequirement
-import zone.vao.claimo.requirement.builtin.GroupRequirement
-import zone.vao.claimo.requirement.builtin.MessagesSentRequirement
-import zone.vao.claimo.requirement.builtin.PermissionRequirement
-import zone.vao.claimo.requirement.builtin.PlaytimeRequirement
-import zone.vao.claimo.requirement.builtin.RankRequirement
+import zone.vao.claimo.requirement.builtin.*
 import zone.vao.claimo.reward.RewardAction
 import zone.vao.claimo.stats.ClaimoStats
 import zone.vao.claimo.stats.MessagePolicy
@@ -35,11 +29,7 @@ import zone.vao.claimo.storage.UsageStorage
 import zone.vao.claimo.update.UpdateChecker
 import zone.vao.claimo.usage.UsageService
 import zone.vao.claimo.util.Durations
-import zone.vao.claimo.voucher.PendingGiveService
-import zone.vao.claimo.voucher.RedeemResult
-import zone.vao.claimo.voucher.Voucher
-import zone.vao.claimo.voucher.VoucherItemService
-import zone.vao.claimo.voucher.VoucherService
+import zone.vao.claimo.voucher.*
 import java.util.concurrent.CompletableFuture
 
 @Suppress("UnstableApiUsage")
@@ -118,6 +108,8 @@ class Claimo : JavaPlugin(), ClaimoService {
 
         registerCommand()
         server.pluginManager.registerEvents(AdminSuggestionFilter(this), this)
+
+        Metrics(this, 33426)
 
         logger.info("Claimo enabled — redeem command: /${configManager.config.commandName}")
     }
