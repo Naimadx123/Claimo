@@ -14,6 +14,12 @@ command: code
 # Open the paginated voucher GUI when the bare command is run with no argument.
 gui-list-enabled: true
 
+# Adds a Claimo button to the pause (Esc) screen on Minecraft 1.21.6+.
+# Changing this requires a server restart.
+pause-screen-button:
+  enabled: true
+  label: "<aqua>Redeem a code" # text drawn on the button itself
+
 # Text the boolean placeholders (redeemed, can_redeem, expired) return, in both
 # PlaceholderAPI and MiniPlaceholders. Set custom messages instead of true/false.
 placeholders:
@@ -66,6 +72,25 @@ Defaults to `code`; there's also a permanent `/claimo` alias. See
 
 When `true` (default), running the bare command with no argument opens the paginated
 [voucher GUI](/configuration/gui/). Set `false` to disable it.
+
+### `pause-screen-button`
+
+<Badge text="restart required" variant="caution" /> Adds a Claimo button to the pause (Esc)
+screen on Minecraft 1.21.6+. Clicking it opens the same code input dialog as
+[`dialog_code_input`](/guides/commands/), so the code is redeemed without leaving the menu.
+
+| Key | Meaning |
+| --- | --- |
+| `enabled` | Turn the button on or off (default `true`). |
+| `label` | The MiniMessage text drawn on the button itself. |
+
+The button is registered before the server finishes loading, so — unlike most keys — `/code reload`
+does not pick up changes here; restart the server instead.
+
+<Aside type="note" title="Older clients simply don't see it">
+	Pause screen additions are a 1.21.6 client feature. Players on older clients keep using the
+	command and the GUI, and nothing about the button reaches them.
+</Aside>
 
 ### `placeholders`
 

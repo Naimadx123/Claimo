@@ -61,7 +61,7 @@ tasks {
             "hikariVersion" to hikariVersion,
             "mongoVersion" to mongoVersion,
         )
-        filesMatching("plugin.yml") {
+        filesMatching(listOf("paper-plugin.yml", "libraries.txt")) {
             expand(props)
         }
     }
